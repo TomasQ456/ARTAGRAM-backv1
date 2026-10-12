@@ -1,0 +1,154 @@
+name: CI/CD - Compilación, Pruebas, Sonar, Docker y Despliegue en AWS
+
+# Este workflow realiza:
+# 1. Pruebas unitarias e integración (Postgres + Redis con Testcontainers).
+# 2. Análisis estático de código con SonarCloud / SonarQube (si SONAR_TOKEN está configurado).
+# 3. Build multi-stage de la imagen Docker y publicación en GitHub Container Registry (ghcr.io).
+# 4. Despliegue continuo (CD) en una instancia AWS EC2 vía SSH (si EC2_* están configurados).
+#
+# NOTA: Tanto Sonar como el despliegue a AWS son tolerantes a la falta de secretos:
+# Si el usuario o colaborador aún no tiene permisos para configurar secrets en el repositorio,
+# el pipeline NO falla; omite el paso con un aviso explicativo y completa exitosamente
+# la compilación, pruebas y generación de imagen.
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch: {}
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/artagram-backend
+
+jobs:
+  test-and-quality:
+    name: Pruebas y Análisis de Calidad
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Necesario para que Sonar analice historial y autoría
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Pruebas unitarias + de integración (Testcontainers & JaCoCo)
+        run: mvn -B verify
+
+      - name: Cache de paquetes de Sonar
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Validar configuración de Sonar
+        id: check_sonar
+        run: |
+          if [ -n "${{ secrets.SONAR_TOKEN }}" ]; then
+            echo "configured=true" >> $GITHUB_OUTPUT
+            echo "SONAR_TOKEN detectado, ejecutando análisis..."
+          else
+            echo "configured=false" >> $GITHUB_OUTPUT
+            echo "::notice ::Análisis Sonar omitido: El secreto SONAR_TOKEN no está configurado en el repositorio. Para activarlo, solicita al administrador del repo que agregue SONAR_TOKEN en Settings > Secrets."
+          fi
+
+      - name: Análisis estático con Sonar
+        if: steps.check_sonar.outputs.configured == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          mvn -B sonar:sonar \
+            -Dsonar.token="${{ secrets.SONAR_TOKEN }}" \
+            -Dsonar.host.url="${{ secrets.SONAR_HOST_URL || 'https://sonarcloud.io' }}" \
+            -Dsonar.organization="${{ secrets.SONAR_ORGANIZATION || github.repository_owner }}" \
+            -Dsonar.projectKey="${{ secrets.SONAR_PROJECT_KEY || format('{0}_{1}', github.repository_owner, 'ARTAGRAM-BackEnd') }}"
+
+  build-and-push:
+    name: Build y Push Docker a GHCR
+    needs: test-and-quality
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login en GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build y push imagen Docker
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Desplegar en AWS EC2
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validar secretos de AWS EC2
+        id: check_secrets
+        run: |
+          if [ -n "${{ secrets.EC2_HOST }}" ] && [ -n "${{ secrets.EC2_SSH_KEY }}" ]; then
+            echo "configured=true" >> $GITHUB_OUTPUT
+            echo "Secretos de AWS detectados, iniciando despliegue..."
+          else
+            echo "configured=false" >> $GITHUB_OUTPUT
+            echo "::notice ::Despliegue a AWS EC2 omitido: Los secretos EC2_HOST y/o EC2_SSH_KEY no están configurados en el repositorio. Para activarlo, solicita al administrador del repo que los agregue en Settings > Secrets."
+          fi
+
+      - name: Preparar directorio remoto en EC2
+        if: steps.check_secrets.outputs.configured == 'true'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER || 'ubuntu' }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            mkdir -p ~/artagram
+
+      - name: Copiar docker-compose a EC2
+        if: steps.check_secrets.outputs.configured == 'true'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER || 'ubuntu' }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "deploy/docker-compose.yml"
+          target: "~/artagram"
+          strip_components: 1
+
+      - name: Actualizar y reiniciar servicio en EC2
+        if: steps.check_secrets.outputs.configured == 'true'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER || 'ubuntu' }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/artagram
+            if [ -n "${{ secrets.GHCR_PAT }}" ]; then
+              echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            fi
+            docker compose pull backend
+            docker compose up -d
+            docker image prune -f

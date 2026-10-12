@@ -1,0 +1,14 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+app:
+  storage:
+    root: ./build/test-uploads
+  email:
+    mode: log
+  jwt:
+    secret: test-only-secret-please-change-32bytes-min

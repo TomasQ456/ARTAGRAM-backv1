@@ -1,0 +1,25 @@
+# Maven
+target/
+
+# Salida de las pruebas de integracion (StorageService escribe aca cuando
+# corre application-test.yml) — se regenera solo en cada `mvn verify`, nunca
+# debe versionarse.
+build/
+
+# Archivos subidos en un `mvn spring-boot:run` local (fuera de Docker, donde
+# el volumen ya queda gitignoreado por sí solo al ser un volumen con nombre).
+data/
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+!.vscode/extensions.json
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Variables de entorno con secretos reales (nunca el .env.example)
+.env
+.env.local

@@ -1,0 +1,67 @@
+name: artagram
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: artagram
+      POSTGRES_USER: artagram
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-artagram}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U artagram"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ghcr.io/${GHCR_OWNER:-tomasq456}/artagram-backend:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: artagram
+      DB_USER: artagram
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-artagram}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-please-please-change-32bytes}
+      MEDIA_SIGNING_SECRET: ${MEDIA_SIGNING_SECRET:-dev-only-media-secret-change-me}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:5173}
+      APP_API_BASE_URL: ${APP_API_BASE_URL:-http://localhost:8080}
+      STORAGE_ROOT: /app/data/uploads
+      STORAGE_PROVIDER: disk
+      EMAIL_MODE: ${EMAIL_MODE:-log}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-}
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m -XX:+UseSerialGC"
+    volumes:
+      - backend_uploads:/app/data/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  postgres_data:
+  backend_uploads:

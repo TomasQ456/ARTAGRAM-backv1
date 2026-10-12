@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  EI_EXPOSE_REP/EI_EXPOSE_REP2 fire on every constructor-injected Spring bean
+  and every JPA entity relationship getter in the codebase (116 of 120 raw
+  findings). That is idiomatic here: collaborators are internal DI beans, not
+  untrusted external objects, and JPA entities are managed within transaction
+  boundaries — defensive copies would fight the framework for no safety gain.
+  Excluding it lets a real finding stand out instead of being buried in noise.
+-->
+<FindBugsFilter>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP" />
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2" />
+    </Match>
+</FindBugsFilter>

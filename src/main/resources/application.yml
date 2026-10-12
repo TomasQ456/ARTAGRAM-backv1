@@ -1,0 +1,120 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: platform
+  datasource:
+    # sslmode=disable por defecto (Postgres local/Docker Compose/Testcontainers
+    # no traen SSL configurado); en Azure Database for PostgreSQL, que lo exige,
+    # basta con exportar DB_SSLMODE=require — sin tocar codigo.
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:artagram}?sslmode=${DB_SSLMODE:disable}
+    username: ${DB_USER:artagram}
+    password: ${DB_PASSWORD:artagram}
+    hikari:
+      maximum-pool-size: 20
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASSWORD:}
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 60MB
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-secret-change-me-please-please-change-32bytes}
+    access-token-minutes: 120
+  email:
+    mode: ${EMAIL_MODE:log} # log | smtp
+    from: no-reply@artagram.local
+    verification-link-base: ${APP_BASE_URL:http://localhost:5173}/verificar
+  storage:
+    # "disk" (default, para dev/Docker Compose) o "blob" (Azure Blob Storage,
+    # para produccion — ver AzureBlobStorageProvider y el README de despliegue).
+    provider: ${STORAGE_PROVIDER:disk}
+    root: ${STORAGE_ROOT:./data/uploads}
+    public-base-url: ${APP_API_BASE_URL:http://localhost:8080}/media
+    signing-secret: ${MEDIA_SIGNING_SECRET:dev-only-media-secret-change-me}
+    signed-url-ttl-minutes: 60
+    azure:
+      connection-string: ${AZURE_STORAGE_CONNECTION_STRING:}
+      container: ${AZURE_STORAGE_CONTAINER:artagram-uploads}
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
+  canvas:
+    point-batch-ms: 30
+    banner-size: 1000
+    banner-region-size: 100
+    banner-rate-limit-per-second: 100
+    stroke-lock-ttl-seconds: 30
+  party:
+    tick-interval-ms: 500
+    eraser-appears-every-seconds: 30
+    eraser-hold-seconds: 10
+  quotas:
+    free-max-communities: 3
+    free-max-party-rooms: 2
+    free-history-days: 30
+  observability:
+    grafana-tecnico-url: ${GRAFANA_URL:http://localhost:3001}/d/tecnico
+    grafana-negocio-url: ${GRAFANA_URL:http://localhost:3001}/d/negocio
+    prometheus-url: ${PROMETHEUS_URL:http://localhost:9090}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
+    tryItOutEnabled: true
+  api-docs:
+    path: /v3/api-docs
+
+management:
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  health:
+    mail:
+      # El chequeo de salud de JavaMailSender intenta abrir una conexion SMTP
+      # real; en EMAIL_MODE=log (dev) no hay servidor SMTP configurado y ese
+      # intento reportaria la app entera como DOWN por algo que ni se usa.
+      enabled: false
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        trazo.latencia.ms: true
+      percentiles:
+        trazo.latencia.ms: 0.5,0.95,0.99
+
+logging:
+  level:
+    root: INFO
+    com.artagram: DEBUG
