@@ -55,8 +55,12 @@ public class PartyDrawService {
         SalaFiesta sala = exigirRondaActiva(salaId, usuarioId);
         long secuencia = siguienteSecuencia(salaId, sala.getNumeroRonda());
         Usuario autor = usuarioRepository.getReferenceById(usuarioId);
+        com.artagram.platform.canvas.TipoPincel pincel = request.tipoPincel() != null ? request.tipoPincel() : sala.getPincelActual();
+        String color = request.colorHex() != null ? request.colorHex() : sala.getColorActual();
+        double grosor = request.grosor() != null ? request.grosor() : sala.getGrosorActual();
+        double opacidad = request.opacidad() != null ? request.opacidad() : sala.getOpacidadActual();
         PartyTrazo trazo = new PartyTrazo(salaId, sala.getNumeroRonda(), secuencia, autor, false,
-                sala.getPincelActual(), sala.getColorActual(), sala.getGrosorActual(), sala.getOpacidadActual(), request.puntos());
+                pincel, color, grosor, opacidad, request.puntos());
         partyTrazoRepository.save(trazo);
         publicar(salaId, trazo);
     }
@@ -122,6 +126,42 @@ public class PartyDrawService {
                 trazo.getAutor().getNombreArtista(), trazo.isBorrador(), trazo.getTipoPincel(), trazo.getColorHex(),
                 trazo.getGrosor(), trazo.getOpacidad(), trazo.getPuntos());
         broadcaster.enviar("/topic/fiesta/" + salaId, PartyEventoDto.trazoNuevo(dto));
+    }
+
+    public com.artagram.platform.party.dto.BloqueoHerramientaResponse tomarHerramienta(UUID salaId, UUID usuarioId, String nombreUsuario, String herramienta) {
+        if (!participanteRepository.existsBySala_IdAndUsuario_IdAndActivoTrue(salaId, usuarioId)) {
+            throw ApiException.forbidden("NO_ERES_PARTICIPANTE", "No perteneces a esta sala");
+        }
+        String clave = claveHerramienta(salaId, herramienta);
+        String propietario = propietario(usuarioId, nombreUsuario);
+        boolean adquirido = lockService.adquirir(clave, propietario, Duration.ofSeconds(60));
+        if (adquirido) {
+            broadcaster.enviar("/topic/fiesta/" + salaId, PartyEventoDto.herramientaTomada(herramienta.toUpperCase(), nombreUsuario));
+            return new com.artagram.platform.party.dto.BloqueoHerramientaResponse(true, herramienta.toUpperCase(), nombreUsuario);
+        }
+        metrics.registrarBloqueoNegado();
+        String actual = lockService.propietarioActual(clave).map(this::extraerNombre).orElse("alguien");
+        return new com.artagram.platform.party.dto.BloqueoHerramientaResponse(false, herramienta.toUpperCase(), actual);
+    }
+
+    public void liberarHerramienta(UUID salaId, UUID usuarioId, String nombreUsuario, String herramienta) {
+        String clave = claveHerramienta(salaId, herramienta);
+        if (lockService.liberar(clave, propietario(usuarioId, nombreUsuario))) {
+            broadcaster.enviar("/topic/fiesta/" + salaId, PartyEventoDto.herramientaLiberada(herramienta.toUpperCase()));
+        }
+    }
+
+    public java.util.Map<String, String> consultarHerramientas(UUID salaId) {
+        java.util.Map<String, String> mapa = new java.util.LinkedHashMap<>();
+        for (String h : java.util.List.of("LAPIZ", "MARCADOR", "ACUARELA", "PLUMA", "AEROGRAFO", "BORRADOR")) {
+            lockService.propietarioActual(claveHerramienta(salaId, h))
+                    .ifPresent(p -> mapa.put(h, extraerNombre(p)));
+        }
+        return mapa;
+    }
+
+    private String claveHerramienta(UUID salaId, String herramienta) {
+        return "fiesta-herramienta:" + salaId + ":" + herramienta.toUpperCase();
     }
 
     private String claveBorrador(UUID salaId) {

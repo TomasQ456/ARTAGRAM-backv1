@@ -1,14 +1,23 @@
 package com.artagram.platform.party.dto;
 
 import com.artagram.platform.canvas.Punto;
+import com.artagram.platform.canvas.TipoPincel;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 
 /**
- * Solo puntos: el pincel, color, grosor y opacidad los impone el servidor
- * segun lo que se repartio al inicio de la ronda (HU-19, "nadie puede
- * cambiarlo por su cuenta").
+ * Puntos del trazo en modo fiesta, con estilo de la herramienta exclusiva tomada.
+ * Si no se envia estilo, se usa el asignado por defecto a la ronda.
  */
-public record TrazarEnRondaRequest(@NotEmpty @Size(max = 500) List<Punto> puntos) {
+public record TrazarEnRondaRequest(
+        TipoPincel tipoPincel,
+        String colorHex,
+        Double grosor,
+        Double opacidad,
+        @NotEmpty @Size(max = 500) List<Punto> puntos
+) {
+    public TrazarEnRondaRequest(List<Punto> puntos) {
+        this(null, null, null, null, puntos);
+    }
 }

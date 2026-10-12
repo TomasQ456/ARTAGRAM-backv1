@@ -82,8 +82,8 @@ class PublicacionNuevasFuncionalidadesIT extends IntegrationTestBase {
     @Test
     @DisplayName("Editar publicación actualiza título/descripción y valida permisos y versión optimista")
     void editarPublicacionConVersion() {
-        String tokenAutor = testUsuarios.registrarVerificarYLoguear(rest, "autor_edit@artagram.test", "Pass1234!", "AutorEdit");
-        String tokenOtro = testUsuarios.registrarVerificarYLoguear(rest, "otro_edit@artagram.test", "Pass1234!", "OtroEdit");
+        String tokenAutor = testUsuarios.registrarVerificarYLoguear(rest, "autor_edit@artagram.test", "ClaveSegura123!", "AutorEdit");
+        String tokenOtro = testUsuarios.registrarVerificarYLoguear(rest, "otro_edit@artagram.test", "ClaveSegura123!", "OtroEdit");
         PublicacionDto pub = publicar(tokenAutor, "Título Original");
 
         // 1. Otro usuario intenta editar -> 403 Forbidden
@@ -123,8 +123,8 @@ class PublicacionNuevasFuncionalidadesIT extends IntegrationTestBase {
     @Test
     @DisplayName("Crear, listar y eliminar comentarios con contador en vivo")
     void cicloComentarios() {
-        String tokenAutor = testUsuarios.registrarVerificarYLoguear(rest, "autor_com@artagram.test", "Pass1234!", "AutorCom");
-        String tokenComentador = testUsuarios.registrarVerificarYLoguear(rest, "comentador@artagram.test", "Pass1234!", "Comentador");
+        String tokenAutor = testUsuarios.registrarVerificarYLoguear(rest, "autor_com@artagram.test", "ClaveSegura123!", "AutorCom");
+        String tokenComentador = testUsuarios.registrarVerificarYLoguear(rest, "comentador@artagram.test", "ClaveSegura123!", "Comentador");
         PublicacionDto pub = publicar(tokenAutor, "Obra para Comentar");
 
         // 1. Crear comentario
@@ -172,7 +172,7 @@ class PublicacionNuevasFuncionalidadesIT extends IntegrationTestBase {
     @Test
     @DisplayName("Módulo de IA: análisis técnico persistido, historial y sugerencias de etiquetas")
     void cicloIa() {
-        String tokenAutor = testUsuarios.registrarVerificarYLoguear(rest, "autor_ia@artagram.test", "Pass1234!", "AutorIa");
+        String tokenAutor = testUsuarios.registrarVerificarYLoguear(rest, "autor_ia@artagram.test", "ClaveSegura123!", "AutorIa");
         PublicacionDto pub = publicar(tokenAutor, "Obra para IA");
 
         // 1. Ejecutar análisis técnico
