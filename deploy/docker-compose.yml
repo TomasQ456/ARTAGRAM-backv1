@@ -46,6 +46,7 @@ services:
       STORAGE_ROOT: /app/data/uploads
       STORAGE_PROVIDER: disk
       EMAIL_MODE: ${EMAIL_MODE:-log}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-}
       JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m -XX:+UseSerialGC"
     volumes:
