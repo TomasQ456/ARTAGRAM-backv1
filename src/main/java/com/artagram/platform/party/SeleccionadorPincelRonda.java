@@ -20,7 +20,7 @@ public class SeleccionadorPincelRonda {
         TipoPincel pincel = TipoPincel.values()[RANDOM.nextInt(TipoPincel.values().length)];
         String color = PALETA[RANDOM.nextInt(PALETA.length)];
         double grosor = 6 + RANDOM.nextInt(20);
-        double opacidad = pincel == TipoPincel.ACUARELA ? 0.5 : 1.0;
+        double opacidad = (pincel == TipoPincel.ACUARELA || pincel == TipoPincel.AEROGRAFO) ? 0.5 : 1.0;
         return new EstiloRonda(pincel, color, grosor, opacidad);
     }
 }

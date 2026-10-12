@@ -8,5 +8,7 @@ package com.artagram.platform.canvas;
 public enum TipoPincel {
     LAPIZ,
     MARCADOR,
-    ACUARELA
+    ACUARELA,
+    PLUMA,
+    AEROGRAFO
 }
