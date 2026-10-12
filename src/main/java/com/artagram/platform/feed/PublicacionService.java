@@ -166,6 +166,25 @@ public class PublicacionService {
         log.info("Publicación eliminada: id={} autor={}", publicacionId, usuarioId);
     }
 
+    @Transactional
+    public PublicacionDto editar(UUID usuarioId, UUID publicacionId, com.artagram.platform.feed.dto.EditarPublicacionRequest request) {
+        Publicacion publicacion = publicacionRepository.findById(publicacionId)
+                .orElseThrow(() -> ApiException.notFound("PUBLICACION_NO_ENCONTRADA", "Esa publicacion no existe"));
+        if (!publicacion.getAutor().getId().equals(usuarioId)) {
+            throw ApiException.forbidden("SOLO_AUTOR", "Solo quien publico esto puede editarlo");
+        }
+        if (request.version() != null && !request.version().equals(publicacion.getVersion())) {
+            throw new org.springframework.dao.OptimisticLockingFailureException("La publicacion fue modificada desde otra sesion");
+        }
+        if (request.etiquetas() != null && request.etiquetas().size() > MAX_ETIQUETAS) {
+            throw ApiException.badRequest("DEMASIADAS_ETIQUETAS", "Maximo " + MAX_ETIQUETAS + " etiquetas");
+        }
+        publicacion.editar(request.titulo(), request.descripcion(), request.etiquetas());
+        publicacion = publicacionRepository.save(publicacion);
+        log.info("Publicación editada: id={} autor={} nuevaVersion={}", publicacionId, usuarioId, publicacion.getVersion());
+        return aDto(publicacion, usuarioId);
+    }
+
     private PublicacionDto aDto(Publicacion publicacion, UUID usuarioSolicitante) {
         boolean meGusta = usuarioSolicitante != null
                 && reaccionRepository.existsByUsuario_IdAndPublicacion_Id(usuarioSolicitante, publicacion.getId());
@@ -175,6 +194,7 @@ public class PublicacionService {
         Set<String> etiquetas = Set.copyOf(publicacion.getEtiquetas());
         return new PublicacionDto(publicacion.getId(), publicacion.getAutor().getId(), publicacion.getAutor().getNombreArtista(),
                 publicacion.getTitulo(), publicacion.getDescripcion(), storageService.urlFirmada(publicacion.getObraFinalRuta()),
-                imagenesUrls, etiquetas, publicacion.getContadorLikes(), meGusta, publicacion.getCreadoEn());
+                imagenesUrls, etiquetas, publicacion.getContadorLikes(), meGusta, publicacion.getCreadoEn(),
+                publicacion.getContadorComentarios(), publicacion.getVersion(), publicacion.getEditadoEn());
     }
 }

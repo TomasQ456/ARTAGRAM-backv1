@@ -12,3 +12,8 @@ app:
     mode: log
   jwt:
     secret: test-only-secret-please-change-32bytes-min
+
+artagram:
+  ia:
+    proveedor: fake
+

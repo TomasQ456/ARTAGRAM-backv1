@@ -92,6 +92,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(ErrorResponse.of("CUERPO_INVALIDO", "El cuerpo de la petición no es JSON válido", traceId));
     }
 
+    @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLock(org.springframework.dao.OptimisticLockingFailureException ex) {
+        String traceId = MDC.get(TraceContext.TRACE_ID_MDC_KEY);
+        log.warn("Conflicto de concurrencia optimista: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of("CONFLICTO_CONCURRENCIA",
+                        "La publicación fue modificada desde otra sesión. Por favor recarga para ver los cambios más recientes.",
+                        traceId));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex) {
         String traceId = MDC.get(TraceContext.TRACE_ID_MDC_KEY);

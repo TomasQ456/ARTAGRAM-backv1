@@ -37,6 +37,16 @@ public class Publicacion extends BaseEntity {
     @Column(name = "contador_likes", nullable = false)
     private int contadorLikes = 0;
 
+    @Column(name = "contador_comentarios", nullable = false)
+    private int contadorComentarios = 0;
+
+    @jakarta.persistence.Version
+    @Column(name = "version", nullable = false)
+    private Integer version = 0;
+
+    @Column(name = "editado_en")
+    private java.time.Instant editadoEn;
+
     @ElementCollection
     @CollectionTable(name = "publicacion_etiquetas", joinColumns = @JoinColumn(name = "publicacion_id"))
     @Column(name = "etiqueta")
@@ -77,6 +87,18 @@ public class Publicacion extends BaseEntity {
         return contadorLikes;
     }
 
+    public int getContadorComentarios() {
+        return contadorComentarios;
+    }
+
+    public Integer getVersion() {
+        return version;
+    }
+
+    public java.time.Instant getEditadoEn() {
+        return editadoEn;
+    }
+
     public Set<String> getEtiquetas() {
         return etiquetas;
     }
@@ -87,5 +109,18 @@ public class Publicacion extends BaseEntity {
 
     public void agregarImagenProceso(String ruta, int orden) {
         imagenesProceso.add(new ImagenProceso(this, ruta, orden));
+    }
+
+    public void editar(String nuevoTitulo, String nuevaDescripcion, Set<String> nuevasEtiquetas) {
+        if (nuevoTitulo != null && !nuevoTitulo.isBlank()) {
+            this.titulo = nuevoTitulo.trim();
+        }
+        if (nuevaDescripcion != null) {
+            this.descripcion = nuevaDescripcion.trim();
+        }
+        if (nuevasEtiquetas != null) {
+            this.etiquetas = new HashSet<>(nuevasEtiquetas);
+        }
+        this.editadoEn = java.time.Instant.now();
     }
 }

@@ -48,7 +48,7 @@ class AuthServiceTest {
                 emailProperties,
                 new NombreSugeridoGenerator(),
                 mock(org.springframework.context.ApplicationEventPublisher.class),
-                mock(com.artagram.platform.observability.EventoNegocioRecorder.class)
+                new com.artagram.platform.observability.EventoNegocioRecorder(mock(com.artagram.platform.observability.EventoNegocioRepository.class))
         );
 
         when(usuarioRepository.save(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));

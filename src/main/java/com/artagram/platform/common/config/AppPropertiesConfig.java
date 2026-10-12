@@ -17,7 +17,8 @@ import org.springframework.context.annotation.Configuration;
         CanvasProperties.class,
         PartyProperties.class,
         QuotaProperties.class,
-        CorsProperties.class
+        CorsProperties.class,
+        com.artagram.platform.ia.IaProperties.class
 })
 public class AppPropertiesConfig {
 }

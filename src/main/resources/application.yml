@@ -118,3 +118,12 @@ logging:
   level:
     root: INFO
     com.artagram: DEBUG
+
+artagram:
+  ia:
+    habilitado: true
+    groq-api-key: ${GROQ_API_KEY:}
+    groq-url: https://api.groq.com/openai/v1/chat/completions
+    modelo: qwen/qwen3.8-27b
+    proveedor: ${IA_PROVEEDOR:groq}
+

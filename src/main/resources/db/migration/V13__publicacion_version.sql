@@ -1,0 +1,2 @@
+ALTER TABLE publicaciones ADD COLUMN version INT NOT NULL DEFAULT 0;
+ALTER TABLE publicaciones ADD COLUMN editado_en TIMESTAMPTZ;
