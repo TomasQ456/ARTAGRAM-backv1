@@ -1,6 +1,7 @@
 package com.artagram.platform.chat;
 
 import com.artagram.platform.auth.JwtService;
+import com.artagram.platform.chat.dto.ConversacionResumenDto;
 import com.artagram.platform.chat.dto.EnviarMensajePersonalRequest;
 import com.artagram.platform.chat.dto.MensajePersonalDto;
 import jakarta.validation.Valid;
@@ -32,6 +33,11 @@ public class PersonalChatController {
                                                        @Valid @RequestBody EnviarMensajePersonalRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(chatPersonalService.enviar(principal.usuarioId(), principal.nombreArtista(), request));
+    }
+
+    @GetMapping("/api/mensajes/conversaciones")
+    public List<ConversacionResumenDto> conversaciones(@AuthenticationPrincipal JwtService.TokenPrincipal principal) {
+        return chatPersonalService.listarConversaciones(principal.usuarioId());
     }
 
     @GetMapping("/api/mensajes/con/{otroUsuarioId}")

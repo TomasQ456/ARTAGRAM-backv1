@@ -13,5 +13,10 @@ public interface MensajePersonalRepository extends JpaRepository<MensajePersonal
             + "order by m.orden asc")
     List<MensajePersonal> conversacion(@Param("a") UUID usuarioA, @Param("b") UUID usuarioB);
 
+    @Query("select m from MensajePersonal m join fetch m.remitente join fetch m.destinatario "
+            + "where m.remitente.id = :usuarioId or m.destinatario.id = :usuarioId "
+            + "order by m.orden desc")
+    List<MensajePersonal> mensajesDelUsuario(@Param("usuarioId") UUID usuarioId);
+
     List<MensajePersonal> findByDestinatario_IdAndEntregadoFalseOrderByOrdenAsc(UUID destinatarioId);
 }

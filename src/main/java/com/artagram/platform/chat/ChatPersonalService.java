@@ -2,13 +2,17 @@ package com.artagram.platform.chat;
 
 import com.artagram.platform.auth.Usuario;
 import com.artagram.platform.auth.UsuarioRepository;
+import com.artagram.platform.chat.dto.ConversacionResumenDto;
 import com.artagram.platform.chat.dto.EnviarMensajePersonalRequest;
 import com.artagram.platform.chat.dto.MensajePersonalDto;
 import com.artagram.platform.common.error.ApiException;
 import com.artagram.platform.realtime.PresenceService;
 import com.artagram.platform.realtime.RealtimeBroadcaster;
 import com.artagram.platform.realtime.StompPrincipal;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,6 +74,26 @@ public class ChatPersonalService {
     @Transactional(readOnly = true)
     public List<MensajePersonalDto> conversacion(UUID usuarioA, UUID usuarioB) {
         return mensajeRepository.conversacion(usuarioA, usuarioB).stream().map(this::aDto).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ConversacionResumenDto> listarConversaciones(UUID usuarioId) {
+        List<MensajePersonal> todos = mensajeRepository.mensajesDelUsuario(usuarioId);
+        Map<UUID, ConversacionResumenDto> resumenes = new LinkedHashMap<>();
+        for (MensajePersonal m : todos) {
+            boolean soyRemitente = m.getRemitente().getId().equals(usuarioId);
+            Usuario otro = soyRemitente ? m.getDestinatario() : m.getRemitente();
+            if (!resumenes.containsKey(otro.getId())) {
+                resumenes.put(otro.getId(), new ConversacionResumenDto(
+                        otro.getId(),
+                        otro.getNombreArtista(),
+                        m.getContenido(),
+                        m.getCreadoEn(),
+                        m.isEntregado()
+                ));
+            }
+        }
+        return new ArrayList<>(resumenes.values());
     }
 
     /**
