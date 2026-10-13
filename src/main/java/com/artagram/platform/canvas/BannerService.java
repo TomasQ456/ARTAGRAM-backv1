@@ -1,5 +1,6 @@
 package com.artagram.platform.canvas;
 
+import com.artagram.platform.auth.RolGlobal;
 import com.artagram.platform.auth.Usuario;
 import com.artagram.platform.auth.UsuarioRepository;
 import com.artagram.platform.canvas.dto.BannerTrazoEventoDto;
@@ -8,6 +9,7 @@ import com.artagram.platform.canvas.dto.RegionEstadoDto;
 import com.artagram.platform.common.error.ApiException;
 import com.artagram.platform.common.lock.ConcurrencyMetrics;
 import com.artagram.platform.community.ComunidadService;
+import com.artagram.platform.community.dto.ComunidadResponse;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
@@ -56,10 +58,17 @@ public class BannerService {
     @Transactional
     public BannerTrazoEventoDto pintar(UUID comunidadId, UUID usuarioId, String nombreUsuario, PintarRegionRequest request) {
         if (!comunidadService.esMiembroActivo(usuarioId, comunidadId)) {
-            throw ApiException.forbidden("NO_ERES_MIEMBRO", "No perteneces a esta comunidad");
+            ComunidadResponse com = comunidadService.ver(comunidadId, usuarioId);
+            boolean esGlobalAdmin = usuarioRepository.findById(usuarioId)
+                    .map(u -> u.getRolGlobal() == RolGlobal.ADMIN)
+                    .orElse(false);
+            if (com.publica()) {
+                comunidadService.unirse(usuarioId, comunidadId);
+            } else if (!esGlobalAdmin) {
+                throw ApiException.forbidden("NO_ERES_MIEMBRO", "No perteneces a esta comunidad");
+            }
         }
-        BannerComunitario banner = bannerRepository.findByComunidadId(comunidadId)
-                .orElseThrow(() -> ApiException.notFound("BANNER_NO_ENCONTRADO", "Esta comunidad no tiene banner"));
+        BannerComunitario banner = asegurarBanner(comunidadId);
 
         int maxRegion = properties.regionsPerSide() * properties.regionsPerSide();
         if (request.regionIndex() >= maxRegion) {
@@ -73,7 +82,7 @@ public class BannerService {
         }
 
         BannerRegionEstado region = regionEstadoRepository.buscarParaActualizar(banner.getId(), request.regionIndex())
-                .orElseThrow(() -> ApiException.notFound("REGION_NO_ENCONTRADA", "Esa region no existe"));
+                .orElseGet(() -> regionEstadoRepository.save(new BannerRegionEstado(banner.getId(), request.regionIndex())));
         long secuencia = region.siguienteSecuencia();
 
         Usuario autor = usuarioRepository.getReferenceById(usuarioId);
@@ -87,10 +96,9 @@ public class BannerService {
                 request.tipoPincel(), request.colorHex(), request.grosor(), request.opacidad(), request.puntos());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<RegionEstadoDto> obtenerEstado(UUID comunidadId) {
-        BannerComunitario banner = bannerRepository.findByComunidadId(comunidadId)
-                .orElseThrow(() -> ApiException.notFound("BANNER_NO_ENCONTRADO", "Esta comunidad no tiene banner"));
+        BannerComunitario banner = asegurarBanner(comunidadId);
         int totalRegiones = properties.regionsPerSide() * properties.regionsPerSide();
 
         return java.util.stream.IntStream.range(0, totalRegiones).mapToObj(regionIndex -> {
@@ -106,5 +114,18 @@ public class BannerService {
             String base64 = snapshot.map(s -> Base64.getEncoder().encodeToString(s.getPng())).orElse(null);
             return new RegionEstadoDto(regionIndex, base64, pendientes);
         }).toList();
+    }
+
+    private BannerComunitario asegurarBanner(UUID comunidadId) {
+        return bannerRepository.findByComunidadId(comunidadId).orElseGet(() -> {
+            BannerComunitario b = bannerRepository.save(
+                    new BannerComunitario(comunidadId, properties.getBannerSize(), properties.getBannerRegionSize()));
+            int totalRegiones = properties.regionsPerSide() * properties.regionsPerSide();
+            for (int i = 0; i < totalRegiones; i++) {
+                regionEstadoRepository.save(new BannerRegionEstado(b.getId(), i));
+            }
+            log.info("Banner auto-aprovisionado para comunidad {}", comunidadId);
+            return b;
+        });
     }
 }

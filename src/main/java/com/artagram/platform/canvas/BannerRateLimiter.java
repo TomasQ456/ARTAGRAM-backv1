@@ -28,12 +28,17 @@ public class BannerRateLimiter {
     }
 
     public boolean permitir(UUID comunidadId, UUID usuarioId) {
-        RRateLimiter limiter = redissonClient.getRateLimiter("banner-rate:" + comunidadId + ":" + usuarioId);
-        limiter.trySetRate(RateType.OVERALL, properties.getBannerRateLimitPerSecond(), 1, RateIntervalUnit.SECONDS);
-        boolean permitido = limiter.tryAcquire();
-        if (!permitido) {
-            log.warn("Limite de ritmo excedido en banner: comunidad={} usuario={}", comunidadId, usuarioId);
+        try {
+            RRateLimiter limiter = redissonClient.getRateLimiter("banner-rate:" + comunidadId + ":" + usuarioId);
+            limiter.trySetRate(RateType.OVERALL, properties.getBannerRateLimitPerSecond(), 1, RateIntervalUnit.SECONDS);
+            boolean permitido = limiter.tryAcquire();
+            if (!permitido) {
+                log.warn("Limite de ritmo excedido en banner: comunidad={} usuario={}", comunidadId, usuarioId);
+            }
+            return permitido;
+        } catch (Exception e) {
+            log.warn("No se pudo contactar Redis para rate limiter de banner ({}), permitiendo por degradacion suave", e.getMessage());
+            return true;
         }
-        return permitido;
     }
 }

@@ -43,7 +43,11 @@ public class BannerController {
     public List<RegionEstadoDto> obtenerEstado(@AuthenticationPrincipal JwtService.TokenPrincipal principal,
                                                 @PathVariable UUID comunidadId) {
         if (!comunidadService.esMiembroActivo(principal.usuarioId(), comunidadId)) {
-            throw ApiException.forbidden("NO_ERES_MIEMBRO", "No perteneces a esta comunidad");
+            var com = comunidadService.ver(comunidadId, principal.usuarioId());
+            boolean esGlobalAdmin = "ADMIN".equalsIgnoreCase(principal.rolGlobal());
+            if (!com.publica() && !esGlobalAdmin) {
+                throw ApiException.forbidden("NO_ERES_MIEMBRO", "No perteneces a esta comunidad");
+            }
         }
         return bannerService.obtenerEstado(comunidadId);
     }

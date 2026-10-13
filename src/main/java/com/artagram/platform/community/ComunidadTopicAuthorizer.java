@@ -41,6 +41,15 @@ public class ComunidadTopicAuthorizer implements DestinationAuthorizer {
         UUID comunidadId = UUID.fromString(matcher.group(3));
         boolean autorizado = comunidadService.esMiembroActivo(principal.usuarioId(), comunidadId);
         if (!autorizado) {
+            try {
+                var com = comunidadService.ver(comunidadId, principal.usuarioId());
+                if (com.publica()) {
+                    autorizado = true;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        if (!autorizado) {
             log.warn("Suscripcion denegada: usuario={} destino={} comunidad={}", principal.usuarioId(), destino, comunidadId);
         }
         return autorizado;
