@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: platform
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
   datasource:
     # sslmode=disable por defecto (Postgres local/Docker Compose/Testcontainers
     # no traen SSL configurado); en Azure Database for PostgreSQL, que lo exige,
@@ -124,6 +128,6 @@ artagram:
     habilitado: ${IA_HABILITADO:true}
     groq-api-key: ${GROQ_API_KEY:}
     groq-url: ${GROQ_URL:https://api.groq.com/openai/v1/chat/completions}
-    modelo: ${GROQ_MODELO:llama-3.2-11b-vision-preview}
+    modelo: ${GROQ_MODELO:qwen/qwen3.8-27b}
     proveedor: ${IA_PROVEEDOR:groq}
 

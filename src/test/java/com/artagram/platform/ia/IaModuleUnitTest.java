@@ -71,4 +71,16 @@ class IaModuleUnitTest {
         assertThat(resultado.descripcionSugerida()).isNotBlank();
         assertThat(resultado.etiquetas()).isNotEmpty();
     }
+
+    @Test
+    @DisplayName("IaProperties resuelve API key y modelo activo por defecto")
+    void iaPropertiesResolucion() {
+        IaProperties props = new IaProperties();
+        props.setModelo("llama-3.2-11b-vision-preview");
+        // Debe auto-corregir modelo deprecado a qwen/qwen3.8-27b
+        assertThat(props.getModelo()).isEqualTo("qwen/qwen3.8-27b");
+
+        // Con .env presente en el directorio del proyecto, debe resolver la API key automáticamente
+        assertThat(props.getGroqApiKey()).isNotBlank();
+    }
 }
