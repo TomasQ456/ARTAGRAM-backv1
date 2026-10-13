@@ -85,9 +85,14 @@ public class ComentarioService {
         }
 
         UUID publicacionId = comentario.getPublicacion().getId();
+        ComentarioDto dto = aDto(comentario);
         comentarioRepository.delete(comentario);
         comentarioRepository.flush();
         publicacionRepository.decrementarComentarios(publicacionId);
+        int totalComentarios = publicacionRepository.findById(publicacionId)
+                .map(Publicacion::getContadorComentarios)
+                .orElse((int) comentarioRepository.countByPublicacion_Id(publicacionId));
+        eventPublisher.publishEvent(new ComentarioEliminadoEvent(dto, totalComentarios));
 
         log.info("Comentario eliminado: id={} por usuario={}", comentarioId, usuarioId);
     }

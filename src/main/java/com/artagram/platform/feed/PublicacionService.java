@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -39,10 +40,13 @@ public class PublicacionService {
     private final UsuarioRepository usuarioRepository;
     private final StorageService storageService;
 
+    private final ApplicationEventPublisher eventPublisher;
+
     public PublicacionService(PublicacionRepository publicacionRepository, ReaccionRepository reaccionRepository,
                                SeguidorRepository seguidorRepository, UsuarioRepository usuarioRepository,
-                               StorageService storageService) {
+                               StorageService storageService, ApplicationEventPublisher eventPublisher) {
         this.publicacionRepository = publicacionRepository;
+        this.eventPublisher = eventPublisher;
         this.reaccionRepository = reaccionRepository;
         this.seguidorRepository = seguidorRepository;
         this.usuarioRepository = usuarioRepository;
@@ -126,6 +130,7 @@ public class PublicacionService {
             publicacionRepository.decrementarLikes(publicacionId);
             int actual = publicacionRepository.findById(publicacionId).map(Publicacion::getContadorLikes).orElse(0);
             log.debug("Like retirado: publicacion={} usuario={} contador={}", publicacionId, usuarioId, actual);
+            eventPublisher.publishEvent(new LikeActualizadoEvent(publicacionId, actual));
             return new LikeResponse(false, actual);
         }
 
@@ -141,6 +146,7 @@ public class PublicacionService {
         }
         int actual = publicacionRepository.findById(publicacionId).map(Publicacion::getContadorLikes).orElse(0);
         log.debug("Like registrado: publicacion={} usuario={} contador={}", publicacionId, usuarioId, actual);
+        eventPublisher.publishEvent(new LikeActualizadoEvent(publicacionId, actual));
         return new LikeResponse(true, actual);
     }
 

@@ -26,4 +26,12 @@ public class ComentarioEventListener {
         log.debug("Emitiendo comentario a {}: id={}", destino, dto.id());
         realtimeBroadcaster.enviar(destino, payload);
     }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void alEliminarComentario(ComentarioEliminadoEvent evento) {
+        ComentarioDto dto = evento.comentario();
+        String destino = "/topic/publicaciones/" + dto.publicacionId() + "/comentarios";
+        log.debug("Emitiendo eliminacion de comentario a {}: id={}", destino, dto.id());
+        realtimeBroadcaster.enviar(destino, new ComentarioEvento("COMENTARIO_ELIMINADO", dto, evento.contadorComentarios()));
+    }
 }

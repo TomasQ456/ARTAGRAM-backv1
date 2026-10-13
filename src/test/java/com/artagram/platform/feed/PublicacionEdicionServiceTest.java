@@ -46,7 +46,8 @@ class PublicacionEdicionServiceTest {
         StorageService storageService = new StorageService(storageProperties, storageProvider);
 
         service = new PublicacionService(publicacionRepository, reaccionRepository,
-                seguidorRepository, usuarioRepository, storageService);
+                seguidorRepository, usuarioRepository, storageService,
+                mock(org.springframework.context.ApplicationEventPublisher.class));
     }
 
     @Test
