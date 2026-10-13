@@ -148,6 +148,10 @@ jobs:
           script: |
             cd ~/artagram
             echo "${{ secrets.GHCR_PAT || secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            if [ -n "${{ secrets.GROQ_API_KEY }}" ]; then
+              touch .env
+              grep -q "^GROQ_API_KEY=" .env && sed -i "s|^GROQ_API_KEY=.*|GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}|" .env || echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" >> .env
+            fi
             docker compose pull backend
             docker compose up -d
             docker image prune -f
