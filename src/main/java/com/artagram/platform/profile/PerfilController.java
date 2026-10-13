@@ -55,4 +55,10 @@ public class PerfilController {
                                       @AuthenticationPrincipal JwtService.TokenPrincipal principal) {
         return perfilService.verPublico(nombreArtista, Optional.ofNullable(principal).map(JwtService.TokenPrincipal::usuarioId).orElse(null));
     }
+
+    @PostMapping("/api/perfiles/{nombreArtista}/premium")
+    public PerfilResponse otorgarPremium(@PathVariable String nombreArtista,
+                                         @RequestParam(name = "activo", defaultValue = "true") boolean activo) {
+        return perfilService.otorgarPremium(nombreArtista, activo);
+    }
 }

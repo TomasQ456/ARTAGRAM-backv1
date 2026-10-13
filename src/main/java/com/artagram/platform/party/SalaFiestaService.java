@@ -62,7 +62,6 @@ public class SalaFiestaService {
 
     @Transactional
     public SalaFiestaResponse crear(UUID usuarioId, CrearSalaRequest request) {
-        quotaService.reservarCupoSalaFiesta(usuarioId);
         Usuario anfitrion = usuarioRepository.getReferenceById(usuarioId);
         String codigo = generarCodigoUnico();
         int totalRondas = request.totalRondas() != null ? request.totalRondas() : 3;

@@ -92,6 +92,16 @@ public class PerfilService {
         return aRespuesta(perfil, esPropio);
     }
 
+    @Transactional
+    public PerfilResponse otorgarPremium(String nombreArtista, boolean activo) {
+        Usuario usuario = usuarioRepository.findByNombreArtistaIgnoreCase(nombreArtista)
+                .orElseThrow(() -> ApiException.notFound("USUARIO_NO_ENCONTRADO", "No existe ese usuario"));
+        usuario.setPremium(activo);
+        usuarioRepository.save(usuario);
+        Perfil perfil = obtenerOCrear(usuario.getId());
+        return aRespuesta(perfil, false);
+    }
+
     private PerfilResponse aRespuesta(Perfil perfil, boolean esPropio) {
         List<EnlaceDto> enlaces = perfil.getEnlaces().stream()
                 .map(e -> new EnlaceDto(e.getEtiqueta(), e.getUrl()))
@@ -106,7 +116,8 @@ public class PerfilService {
                 storageService.urlFirmada(perfil.getFotoUrl()),
                 enlaces,
                 obras,
-                esPropio
+                esPropio,
+                perfil.getUsuario().isPremium()
         );
     }
 }

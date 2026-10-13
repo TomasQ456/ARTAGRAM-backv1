@@ -129,6 +129,13 @@ public class DemoDataSeeder implements CommandLineRunner {
     @Override
     public void run(String... args) {
         if (usuarioRepository.existsByCorreoIgnoreCase(USUARIOS.get(0).correo())) {
+            usuarioRepository.findByNombreArtistaIgnoreCase("sam_pixel").ifPresent(u -> {
+                if (!u.isPremium()) {
+                    u.setPremium(true);
+                    usuarioRepository.save(u);
+                    log.info("Usuario sam_pixel actualizado a premium");
+                }
+            });
             log.info("Datos de ejemplo ya presentes, no se vuelve a sembrar (perfil 'seed')");
             return;
         }
@@ -157,6 +164,9 @@ public class DemoDataSeeder implements CommandLineRunner {
         for (UsuarioDemo u : USUARIOS) {
             Usuario usuario = new Usuario(u.correo(), u.nombreArtista(), passwordEncoder.encode(PASSWORD));
             usuario.marcarVerificado();
+            if ("sam_pixel".equalsIgnoreCase(u.nombreArtista())) {
+                usuario.setPremium(true);
+            }
             usuario = usuarioRepository.save(usuario);
             creados.put(u.nombreArtista(), usuario);
         }

@@ -10,7 +10,8 @@ public record PerfilResponse(
         String fotoUrl,
         List<EnlaceDto> enlaces,
         List<ObraDestacadaResumen> obrasDestacadas,
-        boolean esPropio
+        boolean esPropio,
+        boolean premium
 ) {
 
     public record ObraDestacadaResumen(String titulo, String imagenUrl) {
