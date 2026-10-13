@@ -153,17 +153,22 @@ public class PublicacionService {
      */
     @Transactional
     public void eliminar(UUID usuarioId, UUID publicacionId) {
+        eliminar(usuarioId, publicacionId, false);
+    }
+
+    @Transactional
+    public void eliminar(UUID usuarioId, UUID publicacionId, boolean esAdmin) {
         Publicacion publicacion = publicacionRepository.findById(publicacionId)
                 .orElseThrow(() -> ApiException.notFound("PUBLICACION_NO_ENCONTRADA", "Esa publicacion no existe"));
-        if (!publicacion.getAutor().getId().equals(usuarioId)) {
-            throw ApiException.forbidden("SOLO_AUTOR", "Solo quien publico esto puede eliminarlo");
+        if (!esAdmin && !publicacion.getAutor().getId().equals(usuarioId)) {
+            throw ApiException.forbidden("SOLO_AUTOR", "Solo quien publico esto o un administrador puede eliminarlo");
         }
 
         storageService.eliminar(publicacion.getObraFinalRuta());
         publicacion.getImagenesProceso().forEach(img -> storageService.eliminar(img.getRutaImagen()));
 
         publicacionRepository.delete(publicacion);
-        log.info("Publicación eliminada: id={} autor={}", publicacionId, usuarioId);
+        log.info("Publicación eliminada: id={} solicitante={} (esAdmin={})", publicacionId, usuarioId, esAdmin);
     }
 
     @Transactional

@@ -69,7 +69,8 @@ public class PublicacionController {
 
     @DeleteMapping("/api/publicaciones/{id}")
     public ResponseEntity<Void> eliminar(@AuthenticationPrincipal JwtService.TokenPrincipal principal, @PathVariable UUID id) {
-        publicacionService.eliminar(principal.usuarioId(), id);
+        boolean esAdmin = principal != null && "ADMIN".equalsIgnoreCase(principal.rolGlobal());
+        publicacionService.eliminar(principal.usuarioId(), id, esAdmin);
         return ResponseEntity.noContent().build();
     }
 }

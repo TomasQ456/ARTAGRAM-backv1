@@ -41,6 +41,20 @@ public class ComunidadController {
         return comunidadService.unirse(principal.usuarioId(), id);
     }
 
+    @GetMapping("/api/comunidades/{id}/miembros")
+    public List<com.artagram.platform.community.dto.MiembroComunidadDto> listarMiembros(
+            @AuthenticationPrincipal JwtService.TokenPrincipal principal, @PathVariable UUID id) {
+        return comunidadService.listarMiembros(principal.usuarioId(), id);
+    }
+
+    @PostMapping("/api/comunidades/{id}/miembros/invitar")
+    public com.artagram.platform.community.dto.MiembroComunidadDto invitar(
+            @AuthenticationPrincipal JwtService.TokenPrincipal principal,
+            @PathVariable UUID id,
+            @Valid @RequestBody com.artagram.platform.community.dto.InvitarMiembroRequest request) {
+        return comunidadService.invitarMiembro(principal.usuarioId(), id, request.nombreArtista());
+    }
+
     @GetMapping("/api/comunidades/mias")
     public List<ComunidadResponse> misComunidades(@AuthenticationPrincipal JwtService.TokenPrincipal principal) {
         return comunidadService.misComunidades(principal.usuarioId());

@@ -95,12 +95,69 @@ public class ComunidadService {
         log.info("Rol cambiado en comunidad {}: usuario={} nuevoRol={} (por {})", comunidadId, usuarioObjetivoId, nuevoRol, solicitanteId);
     }
 
+    @Transactional(readOnly = true)
+    public List<com.artagram.platform.community.dto.MiembroComunidadDto> listarMiembros(UUID solicitanteId, UUID comunidadId) {
+        if (!esMiembroActivo(solicitanteId, comunidadId)) {
+            boolean esGlobalAdmin = usuarioRepository.findById(solicitanteId)
+                    .map(u -> u.getRolGlobal() == com.artagram.platform.auth.RolGlobal.ADMIN)
+                    .orElse(false);
+            if (!esGlobalAdmin) {
+                throw ApiException.forbidden("NO_ERES_MIEMBRO", "No perteneces a esta comunidad");
+            }
+        }
+        return membresiaRepository.findByComunidad_IdAndActivoTrue(comunidadId).stream()
+                .map(m -> new com.artagram.platform.community.dto.MiembroComunidadDto(
+                        m.getUsuario().getId(),
+                        m.getUsuario().getNombreArtista(),
+                        m.getRol().name(),
+                        m.getCreadoEn()
+                ))
+                .toList();
+    }
+
+    @Transactional
+    public com.artagram.platform.community.dto.MiembroComunidadDto invitarMiembro(UUID solicitanteId, UUID comunidadId, String nombreArtista) {
+        boolean esGlobalAdmin = usuarioRepository.findById(solicitanteId)
+                .map(u -> u.getRolGlobal() == com.artagram.platform.auth.RolGlobal.ADMIN)
+                .orElse(false);
+        RolComunidad rolSolicitante = obtenerRol(solicitanteId, comunidadId).orElse(null);
+        if (!esGlobalAdmin && (rolSolicitante == null || !rolSolicitante.puedeModerar())) {
+            throw ApiException.forbidden("SIN_PERMISO_MODERACION", "Solo un moderador o administrador puede invitar miembros");
+        }
+        Comunidad comunidad = comunidadRepository.findById(comunidadId)
+                .orElseThrow(() -> ApiException.notFound("COMUNIDAD_NO_ENCONTRADA", "Esa comunidad no existe"));
+        Usuario invitado = usuarioRepository.findByNombreArtistaIgnoreCase(nombreArtista.trim())
+                .orElseThrow(() -> ApiException.notFound("USUARIO_NO_ENCONTRADO", "No existe un usuario con nombre de artista @" + nombreArtista));
+
+        MembresiaComunidad membresia = membresiaRepository.findByComunidad_IdAndUsuario_Id(comunidadId, invitado.getId())
+                .map(m -> {
+                    m.reactivar();
+                    return m;
+                })
+                .orElseGet(() -> membresiaRepository.save(new MembresiaComunidad(comunidad, invitado, RolComunidad.MIEMBRO)));
+
+        log.info("Usuario {} invitado/añadido a comunidad {} por {}", invitado.getId(), comunidadId, solicitanteId);
+        return new com.artagram.platform.community.dto.MiembroComunidadDto(
+                invitado.getId(),
+                invitado.getNombreArtista(),
+                membresia.getRol().name(),
+                membresia.getCreadoEn()
+        );
+    }
+
     @Transactional
     public void expulsar(UUID solicitanteId, UUID comunidadId, UUID usuarioObjetivoId) {
-        RolComunidad rolSolicitante = obtenerRol(solicitanteId, comunidadId)
-                .orElseThrow(() -> ApiException.forbidden("NO_ERES_MIEMBRO", "No perteneces a esta comunidad"));
-        if (!rolSolicitante.puedeModerar()) {
+        boolean esGlobalAdmin = usuarioRepository.findById(solicitanteId)
+                .map(u -> u.getRolGlobal() == com.artagram.platform.auth.RolGlobal.ADMIN)
+                .orElse(false);
+        RolComunidad rolSolicitante = obtenerRol(solicitanteId, comunidadId).orElse(null);
+        if (!esGlobalAdmin && (rolSolicitante == null || !rolSolicitante.puedeModerar())) {
             throw ApiException.forbidden("SIN_PERMISO_MODERACION", "No tienes permisos de moderacion en esta comunidad");
+        }
+        Comunidad comunidad = comunidadRepository.findById(comunidadId)
+                .orElseThrow(() -> ApiException.notFound("COMUNIDAD_NO_ENCONTRADA", "Esa comunidad no existe"));
+        if (comunidad.getCreador().getId().equals(usuarioObjetivoId)) {
+            throw ApiException.forbidden("NO_EXPULSAR_CREADOR", "No se puede expulsar al creador de la comunidad");
         }
         MembresiaComunidad membresia = membresiaRepository.findByComunidad_IdAndUsuario_Id(comunidadId, usuarioObjetivoId)
                 .orElseThrow(() -> ApiException.notFound("MIEMBRO_NO_ENCONTRADO", "Ese usuario no es miembro de la comunidad"));
