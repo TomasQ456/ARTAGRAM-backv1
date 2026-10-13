@@ -96,7 +96,12 @@ public class DemoDataSeeder implements CommandLineRunner {
             new UsuarioDemo("noa.delgado@correo.com", "noa_tinta", "Tinta china y retrato. Publico el proceso completo siempre.", "avatar_2.jpg"),
             new UsuarioDemo("ivan.rueda@correo.com", "ivan_urbano", "Muralista. Me interesa el arte colaborativo en espacios públicos.", "avatar_3.jpg"),
             new UsuarioDemo("maria.paz@correo.com", "maria_paz_art", "Ilustradora freelance. Talleres los sábados.", "avatar_4.jpg"),
-            new UsuarioDemo("diego.leon@correo.com", "diego_grabado", "Grabado y xilografía. Lento pero seguro.", "avatar_5.jpg")
+            new UsuarioDemo("diego.leon@correo.com", "diego_grabado", "Grabado y xilografía. Lento pero seguro.", "avatar_5.jpg"),
+            new UsuarioDemo("camila.oleo@correo.com", "camila_oleo", "Pintora al óleo sobre lienzo. Retratos figurativos y texturas empastadas. 🎨", "avatar_0.jpg"),
+            new UsuarioDemo("mateo.3d@correo.com", "mateo_3d", "Modelado orgánico, renders conceptuales y escultura digital. ✨", "avatar_1.jpg"),
+            new UsuarioDemo("valeria.botanica@correo.com", "valeria_botanica", "Ilustración científica y botánica en acuarela y gouache. Flores de los Andes. 🌸", "avatar_2.jpg"),
+            new UsuarioDemo("andres.concept@correo.com", "andres_concept", "Concept artist para animación y videojuegos. Creación de mundos sci-fi. 🚀", "avatar_3.jpg"),
+            new UsuarioDemo("elena.collage@correo.com", "elena_collage", "Técnicas mixtas, collage análogo y fanzines independientes. Experimentación visual. ✂️", "avatar_4.jpg")
     );
 
     private static final List<CrearComunidadRequest> COMUNIDADES = List.of(
@@ -136,7 +141,8 @@ public class DemoDataSeeder implements CommandLineRunner {
                     log.info("Usuario sam_pixel actualizado a premium");
                 }
             });
-            log.info("Datos de ejemplo ya presentes, no se vuelve a sembrar (perfil 'seed')");
+            asegurarUsuariosRestantes();
+            log.info("Datos de ejemplo ya presentes, nuevos usuarios verificados (perfil 'seed')");
             return;
         }
         log.info("Sembrando datos de ejemplo (perfil 'seed')...");
@@ -318,6 +324,24 @@ public class DemoDataSeeder implements CommandLineRunner {
             }
         }
         log.info("Banners con regiones pintadas");
+    }
+
+    private void asegurarUsuariosRestantes() {
+        for (UsuarioDemo u : USUARIOS) {
+            if (!usuarioRepository.existsByCorreoIgnoreCase(u.correo()) &&
+                !usuarioRepository.existsByNombreArtistaIgnoreCase(u.nombreArtista())) {
+                Usuario usuario = new Usuario(u.correo(), u.nombreArtista(), passwordEncoder.encode(PASSWORD));
+                usuario.marcarVerificado();
+                usuario = usuarioRepository.save(usuario);
+                perfilService.actualizar(usuario.getId(),
+                        new ActualizarPerfilRequest(u.bio(), List.of(), List.of()));
+                try {
+                    perfilService.subirFoto(usuario.getId(), imagenClasspath(u.avatar()));
+                } catch (Exception ignored) {
+                }
+                log.info("Usuario adicional de ejemplo creado: {}", u.nombreArtista());
+            }
+        }
     }
 
     private MultipartFile imagenClasspath(String nombre) {
