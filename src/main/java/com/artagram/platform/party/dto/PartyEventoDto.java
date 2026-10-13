@@ -20,6 +20,10 @@ public record PartyEventoDto(
         return new PartyEventoDto("RONDA_TERMINADA", 0L, null, null, null, null);
     }
 
+    public static PartyEventoDto juegoTerminado() {
+        return new PartyEventoDto("JUEGO_TERMINADO", 0L, null, null, null, null);
+    }
+
     public static PartyEventoDto borradorDisponible() {
         return new PartyEventoDto("BORRADOR_DISPONIBLE", null, null, null, null, null);
     }

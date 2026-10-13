@@ -6,6 +6,7 @@ import java.util.List;
 public record EstadoRondaResponse(
         String estadoSala,
         int numeroRonda,
+        int totalRondas,
         long msRestantes,
         TipoPincel pincel,
         String colorHex,
@@ -14,4 +15,7 @@ public record EstadoRondaResponse(
         String borradorPropietario,
         List<PartyTrazoDto> trazos
 ) {
+    public EstadoRondaResponse(String estadoSala, int numeroRonda, long msRestantes, TipoPincel pincel, String colorHex, Double grosor, Double opacidad, String borradorPropietario, List<PartyTrazoDto> trazos) {
+        this(estadoSala, numeroRonda, 3, msRestantes, pincel, colorHex, grosor, opacidad, borradorPropietario, trazos);
+    }
 }

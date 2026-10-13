@@ -11,9 +11,16 @@ import com.artagram.platform.party.dto.PartyTrazoDto;
 import com.artagram.platform.party.dto.TrazarEnRondaRequest;
 import com.artagram.platform.realtime.RealtimeBroadcaster;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicLong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,10 +31,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PartyDrawService {
 
+    private static final Logger log = LoggerFactory.getLogger(PartyDrawService.class);
     private static final Duration TTL_BORRADOR = Duration.ofSeconds(10);
     private static final String SEPARADOR = "::";
 
     private final Map<String, Long> cacheParticipantes = new ConcurrentHashMap<>();
+    private final Map<UUID, List<PartyTrazoDto>> bufferTrazos = new ConcurrentHashMap<>();
+    private final Map<UUID, AtomicLong> secuenciasSalas = new ConcurrentHashMap<>();
 
     private final SalaFiestaRepository salaRepository;
     private final ParticipanteSalaRepository participanteRepository;
@@ -54,19 +64,21 @@ public class PartyDrawService {
         this.properties = properties;
     }
 
-    @Transactional
     public void trazar(UUID salaId, UUID usuarioId, String nombreUsuario, TrazarEnRondaRequest request) {
-        SalaFiesta sala = exigirRondaActiva(salaId, usuarioId);
-        long secuencia = siguienteSecuencia(salaId, sala.getNumeroRonda());
-        Usuario autor = usuarioRepository.getReferenceById(usuarioId);
+        if (!esParticipanteValido(salaId, usuarioId)) {
+            return;
+        }
+        SalaFiesta sala = salaRepository.findById(salaId)
+                .orElseThrow(() -> ApiException.notFound("SALA_NO_ENCONTRADA", "Esa sala no existe"));
+        long secuencia = siguienteSecuenciaLocal(salaId);
         com.artagram.platform.canvas.TipoPincel pincel = request.tipoPincel() != null ? request.tipoPincel() : sala.getPincelActual();
         String color = request.colorHex() != null ? request.colorHex() : sala.getColorActual();
-        double grosor = request.grosor() != null ? request.grosor() : sala.getGrosorActual();
-        double opacidad = request.opacidad() != null ? request.opacidad() : sala.getOpacidadActual();
-        PartyTrazo trazo = new PartyTrazo(salaId, sala.getNumeroRonda(), secuencia, autor, false,
+        double grosor = request.grosor() != null ? request.grosor() : (sala.getGrosorActual() != null ? sala.getGrosorActual() : 20.0);
+        double opacidad = request.opacidad() != null ? request.opacidad() : (sala.getOpacidadActual() != null ? sala.getOpacidadActual() : 1.0);
+        PartyTrazoDto dto = new PartyTrazoDto(secuencia, usuarioId, nombreUsuario, false,
                 pincel, color, grosor, opacidad, request.puntos());
-        partyTrazoRepository.save(trazo);
-        publicar(salaId, trazo);
+        bufferTrazos.computeIfAbsent(salaId, k -> new CopyOnWriteArrayList<>()).add(dto);
+        broadcaster.enviar("/topic/fiesta/" + salaId, PartyEventoDto.trazoNuevo(dto));
     }
 
     public BloqueoBorradorResponse tomarBorrador(UUID salaId, UUID usuarioId, String nombreUsuario) {
@@ -112,21 +124,67 @@ public class PartyDrawService {
         broadcaster.enviar("/topic/fiesta/" + salaId, PartyEventoDto.trazoParcial(dto));
     }
 
-    @Transactional
     public void borrar(UUID salaId, UUID usuarioId, String nombreUsuario, TrazarEnRondaRequest request) {
-        SalaFiesta sala = exigirRondaActiva(salaId, usuarioId);
         String actualHerramienta = lockService.propietarioActual(claveHerramienta(salaId, "BORRADOR")).orElse(null);
         String actualBorrador = lockService.propietarioActual(claveBorrador(salaId)).orElse(null);
         String miPropietario = propietario(usuarioId, nombreUsuario);
         if (!miPropietario.equals(actualHerramienta) && !miPropietario.equals(actualBorrador)) {
             throw ApiException.forbidden("NO_TIENES_EL_BORRADOR", "No tienes el borrador en este momento");
         }
-        long secuencia = siguienteSecuencia(salaId, sala.getNumeroRonda());
-        Usuario autor = usuarioRepository.getReferenceById(usuarioId);
-        PartyTrazo trazo = new PartyTrazo(salaId, sala.getNumeroRonda(), secuencia, autor, true,
-                null, null, 40.0, 1.0, request.puntos());
-        partyTrazoRepository.save(trazo);
-        publicar(salaId, trazo);
+        long secuencia = siguienteSecuenciaLocal(salaId);
+        PartyTrazoDto dto = new PartyTrazoDto(secuencia, usuarioId, nombreUsuario, true,
+                null, null, request.grosor() != null ? request.grosor() : 40.0, 1.0, request.puntos());
+        bufferTrazos.computeIfAbsent(salaId, k -> new CopyOnWriteArrayList<>()).add(dto);
+        broadcaster.enviar("/topic/fiesta/" + salaId, PartyEventoDto.trazoNuevo(dto));
+    }
+
+    private long siguienteSecuenciaLocal(UUID salaId) {
+        return secuenciasSalas.computeIfAbsent(salaId, k -> {
+            long maxSec = partyTrazoRepository.findBySalaIdOrderBySecuenciaAsc(salaId).stream()
+                    .mapToLong(PartyTrazo::getSecuencia)
+                    .max()
+                    .orElse(0L);
+            return new AtomicLong(maxSec);
+        }).incrementAndGet();
+    }
+
+    public List<PartyTrazoDto> obtenerTrazos(UUID salaId, int numeroRonda) {
+        List<PartyTrazoDto> enDb = partyTrazoRepository.findBySalaIdOrderBySecuenciaAsc(salaId).stream()
+                .map(t -> new PartyTrazoDto(t.getSecuencia(), t.getAutor().getId(), t.getAutor().getNombreArtista(),
+                        t.isBorrador(), t.getTipoPincel(), t.getColorHex(), t.getGrosor(), t.getOpacidad(), t.getPuntos()))
+                .toList();
+        List<PartyTrazoDto> enMemoria = bufferTrazos.getOrDefault(salaId, List.of());
+        if (enMemoria.isEmpty()) {
+            return enDb;
+        }
+        Map<Long, PartyTrazoDto> mapa = new LinkedHashMap<>();
+        for (PartyTrazoDto t : enDb) {
+            mapa.put(t.secuencia(), t);
+        }
+        for (PartyTrazoDto t : enMemoria) {
+            mapa.put(t.secuencia(), t);
+        }
+        return new ArrayList<>(mapa.values());
+    }
+
+    @Transactional
+    public void consolidarTrazosEnBaseDeDatos(UUID salaId) {
+        List<PartyTrazoDto> pendientes = bufferTrazos.remove(salaId);
+        if (pendientes == null || pendientes.isEmpty()) {
+            return;
+        }
+        SalaFiesta sala = salaRepository.findById(salaId).orElse(null);
+        if (sala == null) {
+            return;
+        }
+        List<PartyTrazo> entidades = new ArrayList<>();
+        for (PartyTrazoDto dto : pendientes) {
+            Usuario autor = usuarioRepository.getReferenceById(dto.autorId());
+            entidades.add(new PartyTrazo(salaId, sala.getNumeroRonda(), dto.secuencia(), autor,
+                    dto.borrador(), dto.tipoPincel(), dto.colorHex(), dto.grosor(), dto.opacidad(), dto.puntos()));
+        }
+        partyTrazoRepository.saveAll(entidades);
+        log.info("Trazos consolidados en DB para sala {}: {} trazos guardados", salaId, entidades.size());
     }
 
     public void liberarBorrador(UUID salaId, UUID usuarioId, String nombreUsuario) {

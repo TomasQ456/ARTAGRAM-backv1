@@ -1,0 +1,1 @@
+ALTER TABLE salas_fiesta ADD COLUMN IF NOT EXISTS total_rondas INT NOT NULL DEFAULT 3;

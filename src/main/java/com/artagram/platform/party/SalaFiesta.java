@@ -28,6 +28,9 @@ public class SalaFiesta extends BaseEntity {
     @Column(name = "cupo_maximo", nullable = false)
     private int cupoMaximo;
 
+    @Column(name = "total_rondas", nullable = false)
+    private int totalRondas = 3;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private EstadoSala estado = EstadoSala.ESPERANDO;
@@ -51,11 +54,16 @@ public class SalaFiesta extends BaseEntity {
     protected SalaFiesta() {
     }
 
-    public SalaFiesta(String codigo, Usuario anfitrion, int duracionRondaSegundos, int cupoMaximo) {
+    public SalaFiesta(String codigo, Usuario anfitrion, int duracionRondaSegundos, int cupoMaximo, int totalRondas) {
         this.codigo = codigo;
         this.anfitrion = anfitrion;
         this.duracionRondaSegundos = duracionRondaSegundos;
         this.cupoMaximo = cupoMaximo;
+        this.totalRondas = totalRondas > 0 ? totalRondas : 3;
+    }
+
+    public SalaFiesta(String codigo, Usuario anfitrion, int duracionRondaSegundos, int cupoMaximo) {
+        this(codigo, anfitrion, duracionRondaSegundos, cupoMaximo, 3);
     }
 
     public String getCodigo() {
@@ -113,5 +121,13 @@ public class SalaFiesta extends BaseEntity {
 
     public void congelar() {
         this.estado = EstadoSala.ESPERANDO;
+    }
+
+    public int getTotalRondas() {
+        return totalRondas;
+    }
+
+    public void setTotalRondas(int totalRondas) {
+        this.totalRondas = totalRondas;
     }
 }
