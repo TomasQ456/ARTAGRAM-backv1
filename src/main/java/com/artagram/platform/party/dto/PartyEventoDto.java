@@ -43,4 +43,8 @@ public record PartyEventoDto(
     public static PartyEventoDto trazoNuevo(PartyTrazoDto trazo) {
         return new PartyEventoDto("TRAZO", null, trazo, null, null, null);
     }
+
+    public static PartyEventoDto trazoParcial(PartyTrazoDto trazo) {
+        return new PartyEventoDto("TRAZO_PARCIAL", null, trazo, null, null, null);
+    }
 }

@@ -34,6 +34,12 @@ public class PartyStompController {
         partyDrawService.trazar(salaId, p.usuarioId(), p.nombreArtista(), request);
     }
 
+    @MessageMapping("/fiesta/{salaId}/parcial")
+    public void parcial(@DestinationVariable UUID salaId, @Valid @Payload TrazarEnRondaRequest request, Principal principal) {
+        StompPrincipal p = (StompPrincipal) principal;
+        partyDrawService.parcial(salaId, p.usuarioId(), p.nombreArtista(), request);
+    }
+
     @MessageMapping("/fiesta/{salaId}/borrar")
     public void borrar(@DestinationVariable UUID salaId, @Valid @Payload TrazarEnRondaRequest request, Principal principal) {
         StompPrincipal p = (StompPrincipal) principal;

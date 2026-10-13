@@ -82,11 +82,22 @@ public class PartyDrawService {
         return new BloqueoBorradorResponse(false, actual);
     }
 
+    public void parcial(UUID salaId, UUID usuarioId, String nombreUsuario, TrazarEnRondaRequest request) {
+        if (!participanteRepository.existsBySala_IdAndUsuario_IdAndActivoTrue(salaId, usuarioId)) {
+            return;
+        }
+        PartyTrazoDto dto = new PartyTrazoDto(0, usuarioId, nombreUsuario, false,
+                request.tipoPincel(), request.colorHex(), request.grosor(), request.opacidad(), request.puntos());
+        broadcaster.enviar("/topic/fiesta/" + salaId, PartyEventoDto.trazoParcial(dto));
+    }
+
     @Transactional
     public void borrar(UUID salaId, UUID usuarioId, String nombreUsuario, TrazarEnRondaRequest request) {
         SalaFiesta sala = exigirRondaActiva(salaId, usuarioId);
-        String actual = lockService.propietarioActual(claveBorrador(salaId)).orElse(null);
-        if (actual == null || !actual.equals(propietario(usuarioId, nombreUsuario))) {
+        String actualHerramienta = lockService.propietarioActual(claveHerramienta(salaId, "BORRADOR")).orElse(null);
+        String actualBorrador = lockService.propietarioActual(claveBorrador(salaId)).orElse(null);
+        String miPropietario = propietario(usuarioId, nombreUsuario);
+        if (!miPropietario.equals(actualHerramienta) && !miPropietario.equals(actualBorrador)) {
             throw ApiException.forbidden("NO_TIENES_EL_BORRADOR", "No tienes el borrador en este momento");
         }
         long secuencia = siguienteSecuencia(salaId, sala.getNumeroRonda());
@@ -98,7 +109,9 @@ public class PartyDrawService {
     }
 
     public void liberarBorrador(UUID salaId, UUID usuarioId, String nombreUsuario) {
-        if (lockService.liberar(claveBorrador(salaId), propietario(usuarioId, nombreUsuario))) {
+        String propietario = propietario(usuarioId, nombreUsuario);
+        lockService.liberar(claveHerramienta(salaId, "BORRADOR"), propietario);
+        if (lockService.liberar(claveBorrador(salaId), propietario)) {
             broadcaster.enviar("/topic/fiesta/" + salaId, PartyEventoDto.borradorLiberado());
         }
     }
@@ -109,8 +122,11 @@ public class PartyDrawService {
         }
         SalaFiesta sala = salaRepository.findById(salaId)
                 .orElseThrow(() -> ApiException.notFound("SALA_NO_ENCONTRADA", "Esa sala no existe"));
-        if (sala.getEstado() != EstadoSala.EN_RONDA) {
-            throw ApiException.conflict("RONDA_NO_ACTIVA", "La ronda no esta activa ahora mismo");
+        if (sala.getNumeroRonda() == 0) {
+            sala.iniciarNuevaRonda(com.artagram.platform.canvas.TipoPincel.LAPIZ, "#FF6B57", 20.0, 1.0);
+            rondaEstadoRepository.save(new PartyRondaEstado(sala.getId(), sala.getNumeroRonda()));
+        } else if (sala.getEstado() != EstadoSala.EN_RONDA) {
+            sala.setEstado(EstadoSala.EN_RONDA);
         }
         return sala;
     }
@@ -136,6 +152,9 @@ public class PartyDrawService {
         String propietario = propietario(usuarioId, nombreUsuario);
         boolean adquirido = lockService.adquirir(clave, propietario, Duration.ofSeconds(60));
         if (adquirido) {
+            if ("BORRADOR".equalsIgnoreCase(herramienta)) {
+                lockService.adquirir(claveBorrador(salaId), propietario, Duration.ofSeconds(60));
+            }
             broadcaster.enviar("/topic/fiesta/" + salaId, PartyEventoDto.herramientaTomada(herramienta.toUpperCase(), nombreUsuario));
             return new com.artagram.platform.party.dto.BloqueoHerramientaResponse(true, herramienta.toUpperCase(), nombreUsuario);
         }
@@ -146,7 +165,11 @@ public class PartyDrawService {
 
     public void liberarHerramienta(UUID salaId, UUID usuarioId, String nombreUsuario, String herramienta) {
         String clave = claveHerramienta(salaId, herramienta);
-        if (lockService.liberar(clave, propietario(usuarioId, nombreUsuario))) {
+        String propietario = propietario(usuarioId, nombreUsuario);
+        if ("BORRADOR".equalsIgnoreCase(herramienta)) {
+            lockService.liberar(claveBorrador(salaId), propietario);
+        }
+        if (lockService.liberar(clave, propietario)) {
             broadcaster.enviar("/topic/fiesta/" + salaId, PartyEventoDto.herramientaLiberada(herramienta.toUpperCase()));
         }
     }
