@@ -86,7 +86,8 @@ public class PartyDrawService {
         if (!participanteRepository.existsBySala_IdAndUsuario_IdAndActivoTrue(salaId, usuarioId)) {
             return;
         }
-        PartyTrazoDto dto = new PartyTrazoDto(0, usuarioId, nombreUsuario, false,
+        boolean esBorrador = request.tipoPincel() == null;
+        PartyTrazoDto dto = new PartyTrazoDto(0, usuarioId, nombreUsuario, esBorrador,
                 request.tipoPincel(), request.colorHex(), request.grosor(), request.opacidad(), request.puntos());
         broadcaster.enviar("/topic/fiesta/" + salaId, PartyEventoDto.trazoParcial(dto));
     }
