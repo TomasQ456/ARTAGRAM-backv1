@@ -2,8 +2,10 @@ package com.artagram.platform.feed;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.artagram.platform.feed.dto.ArtistaResumenDto;
 import com.artagram.platform.feed.dto.FeedResponse;
 import com.artagram.platform.feed.dto.PublicacionDto;
+import com.artagram.platform.feed.dto.SeguimientoDto;
 import com.artagram.platform.support.IntegrationTestBase;
 import com.artagram.platform.support.TestUsuarios;
 import java.awt.image.BufferedImage;
@@ -162,6 +164,37 @@ class PublicacionIT extends IntegrationTestBase {
         var titulosPrimera = primeraPagina.getBody().publicaciones().stream().map(PublicacionDto::titulo).toList();
         var titulosSegunda = segundaPagina.getBody().publicaciones().stream().map(PublicacionDto::titulo).toList();
         assertThat(titulosPrimera).doesNotContainAnyElementsOf(titulosSegunda);
+    }
+
+    @Test
+    void buscoAUnArtistaLoSigoYSusObrasAparecenEnMiFeed() {
+        String tokenAutora = testUsuarios.registrarVerificarYLoguear(rest, "buscada@correo.com", "claveSegura123", "acuarelista_buscada");
+        String tokenLector = testUsuarios.registrarVerificarYLoguear(rest, "buscador@correo.com", "claveSegura123", "lector_buscador");
+        PublicacionDto obra = publicarObra(tokenAutora, "Obra para encontrar");
+
+        // Sin seguirla, su obra no esta en mi feed
+        ResponseEntity<FeedResponse> antes = rest.exchange("/api/feed", HttpMethod.GET, new HttpEntity<>(auth(tokenLector)), FeedResponse.class);
+        assertThat(antes.getBody().publicaciones()).noneMatch(p -> p.id().equals(obra.id()));
+
+        // La encuentro por parte del nombre, sin importar mayusculas; yo no salgo en mis propios resultados
+        ResponseEntity<ArtistaResumenDto[]> resultados = rest.exchange("/api/artistas?q=ACUARELISTA_bus", HttpMethod.GET,
+                new HttpEntity<>(auth(tokenLector)), ArtistaResumenDto[].class);
+        assertThat(resultados.getBody()).extracting(ArtistaResumenDto::nombreArtista).containsExactly("acuarelista_buscada");
+        ArtistaResumenDto encontrada = resultados.getBody()[0];
+        assertThat(encontrada.loSigo()).isFalse();
+        ResponseEntity<ArtistaResumenDto[]> propios = rest.exchange("/api/artistas?q=lector_buscador", HttpMethod.GET,
+                new HttpEntity<>(auth(tokenLector)), ArtistaResumenDto[].class);
+        assertThat(propios.getBody()).isEmpty();
+
+        rest.postForEntity("/api/artistas/" + encontrada.usuarioId() + "/seguir", new HttpEntity<>(auth(tokenLector)), Void.class);
+
+        ResponseEntity<SeguimientoDto> seguimiento = rest.exchange("/api/artistas/" + encontrada.usuarioId() + "/seguimiento",
+                HttpMethod.GET, new HttpEntity<>(auth(tokenLector)), SeguimientoDto.class);
+        assertThat(seguimiento.getBody().loSigo()).isTrue();
+        assertThat(seguimiento.getBody().seguidores()).isEqualTo(1);
+
+        ResponseEntity<FeedResponse> despues = rest.exchange("/api/feed", HttpMethod.GET, new HttpEntity<>(auth(tokenLector)), FeedResponse.class);
+        assertThat(despues.getBody().publicaciones()).anyMatch(p -> p.id().equals(obra.id()));
     }
 
     @Test
