@@ -140,11 +140,15 @@ public class PartyDrawService {
 
     private long siguienteSecuenciaLocal(UUID salaId) {
         return secuenciasSalas.computeIfAbsent(salaId, k -> {
-            long maxSec = partyTrazoRepository.findBySalaIdOrderBySecuenciaAsc(salaId).stream()
+            long maxDb = partyTrazoRepository.findBySalaIdOrderBySecuenciaAsc(salaId).stream()
                     .mapToLong(PartyTrazo::getSecuencia)
                     .max()
                     .orElse(0L);
-            return new AtomicLong(maxSec);
+            long maxBuffer = bufferTrazos.getOrDefault(salaId, List.of()).stream()
+                    .mapToLong(PartyTrazoDto::secuencia)
+                    .max()
+                    .orElse(0L);
+            return new AtomicLong(Math.max(maxDb, maxBuffer));
         }).incrementAndGet();
     }
 
