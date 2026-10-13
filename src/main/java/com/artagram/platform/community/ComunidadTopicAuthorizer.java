@@ -40,7 +40,11 @@ public class ComunidadTopicAuthorizer implements DestinationAuthorizer {
         }
         UUID comunidadId = UUID.fromString(matcher.group(3));
         boolean autorizado = comunidadService.esMiembroActivo(principal.usuarioId(), comunidadId);
-        if (!autorizado) {
+        // Excepcion de solo lectura: en una comunidad publica, quien no es miembro puede
+        // ver el banner mural en vivo (SUBSCRIBE a /topic/banner/...). Lienzo, chat y
+        // cualquier envio (/app/...) siguen exigiendo membresia activa (HU-11).
+        boolean soloLecturaDeBanner = "topic".equals(matcher.group(1)) && "banner".equals(matcher.group(2));
+        if (!autorizado && soloLecturaDeBanner) {
             try {
                 var com = comunidadService.ver(comunidadId, principal.usuarioId());
                 if (com.publica()) {
