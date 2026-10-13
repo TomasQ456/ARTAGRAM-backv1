@@ -168,6 +168,14 @@ public class DemoDataSeeder implements CommandLineRunner {
     private Map<String, Usuario> crearUsuarios() {
         Map<String, Usuario> creados = new LinkedHashMap<>();
         for (UsuarioDemo u : USUARIOS) {
+            // V17 ya inserta algunos de estos usuarios por SQL antes de que corra el seeder:
+            // reutilizarlos en vez de crearlos de nuevo (si no, la clave unica de correo
+            // aborta el arranque de toda la aplicacion).
+            Usuario existente = usuarioRepository.findByCorreoIgnoreCase(u.correo()).orElse(null);
+            if (existente != null) {
+                creados.put(existente.getNombreArtista(), existente);
+                continue;
+            }
             Usuario usuario = new Usuario(u.correo(), u.nombreArtista(), passwordEncoder.encode(PASSWORD));
             usuario.marcarVerificado();
             if ("sam_pixel".equalsIgnoreCase(u.nombreArtista())) {
