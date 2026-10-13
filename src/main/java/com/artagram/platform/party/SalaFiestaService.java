@@ -131,6 +131,53 @@ public class SalaFiestaService {
     }
 
     @Transactional(readOnly = true)
+    public List<SalaFiestaResponse> listarSalasActivasDelUsuario(UUID usuarioId) {
+        return participanteRepository.findSalasActivasDelUsuario(usuarioId).stream()
+                .map(this::aRespuesta)
+                .toList();
+    }
+
+    @Transactional
+    public void cerrarSala(UUID usuarioId, UUID salaId) {
+        SalaFiesta sala = salaRepository.findById(salaId)
+                .orElseThrow(() -> ApiException.notFound("SALA_NO_ENCONTRADA", "Esa sala no existe"));
+        if (!sala.getAnfitrion().getId().equals(usuarioId)) {
+            throw ApiException.forbidden("SOLO_ANFITRION", "Solo el anfitrión puede cerrar la sala");
+        }
+        sala.setEstado(EstadoSala.CERRADA);
+        roundClock.terminarRonda(salaId);
+        broadcaster.enviar("/topic/fiesta/" + salaId, PartyEventoDto.rondaTerminada());
+        log.info("Sala cerrada por anfitrión: id={}", salaId);
+    }
+
+    @Transactional
+    public void salirDeSala(UUID usuarioId, UUID salaId) {
+        ParticipanteSala participante = participanteRepository.findBySala_IdAndUsuario_Id(salaId, usuarioId)
+                .orElseThrow(() -> ApiException.notFound("NO_ERES_PARTICIPANTE", "No estás en esta sala"));
+        participante.salir();
+        log.info("Usuario {} salió de la sala {}", usuarioId, salaId);
+    }
+
+    @Transactional
+    public int limpiarSalasInactivas(UUID usuarioId) {
+        List<SalaFiesta> salas = participanteRepository.findSalasActivasDelUsuario(usuarioId);
+        int cerradas = 0;
+        for (SalaFiesta s : salas) {
+            if (s.getAnfitrion().getId().equals(usuarioId)) {
+                s.setEstado(EstadoSala.CERRADA);
+                roundClock.terminarRonda(s.getId());
+                broadcaster.enviar("/topic/fiesta/" + s.getId(), PartyEventoDto.rondaTerminada());
+                cerradas++;
+            } else {
+                participanteRepository.findBySala_IdAndUsuario_Id(s.getId(), usuarioId)
+                        .ifPresent(ParticipanteSala::salir);
+                cerradas++;
+            }
+        }
+        return cerradas;
+    }
+
+    @Transactional(readOnly = true)
     public SalaFiestaResponse obtenerRespuesta(UUID salaId) {
         SalaFiesta sala = salaRepository.findById(salaId)
                 .orElseThrow(() -> ApiException.notFound("SALA_NO_ENCONTRADA", "Esa sala no existe"));

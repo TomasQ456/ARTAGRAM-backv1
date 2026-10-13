@@ -11,7 +11,9 @@ import com.artagram.platform.party.dto.PartyTrazoDto;
 import com.artagram.platform.party.dto.TrazarEnRondaRequest;
 import com.artagram.platform.realtime.RealtimeBroadcaster;
 import java.time.Duration;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,8 @@ public class PartyDrawService {
 
     private static final Duration TTL_BORRADOR = Duration.ofSeconds(10);
     private static final String SEPARADOR = "::";
+
+    private final Map<String, Long> cacheParticipantes = new ConcurrentHashMap<>();
 
     private final SalaFiestaRepository salaRepository;
     private final ParticipanteSalaRepository participanteRepository;
@@ -82,8 +86,24 @@ public class PartyDrawService {
         return new BloqueoBorradorResponse(false, actual);
     }
 
+    private boolean esParticipanteValido(UUID salaId, UUID usuarioId) {
+        String clave = salaId + ":" + usuarioId;
+        Long expira = cacheParticipantes.get(clave);
+        long ahora = System.currentTimeMillis();
+        if (expira != null && ahora < expira) {
+            return true;
+        }
+        boolean valido = participanteRepository.existsBySala_IdAndUsuario_IdAndActivoTrue(salaId, usuarioId);
+        if (valido) {
+            cacheParticipantes.put(clave, ahora + 30_000L);
+        } else {
+            cacheParticipantes.remove(clave);
+        }
+        return valido;
+    }
+
     public void parcial(UUID salaId, UUID usuarioId, String nombreUsuario, TrazarEnRondaRequest request) {
-        if (!participanteRepository.existsBySala_IdAndUsuario_IdAndActivoTrue(salaId, usuarioId)) {
+        if (!esParticipanteValido(salaId, usuarioId)) {
             return;
         }
         boolean esBorrador = request.tipoPincel() == null;

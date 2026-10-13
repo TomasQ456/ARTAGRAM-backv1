@@ -7,10 +7,13 @@ import com.artagram.platform.party.dto.CrearSalaRequest;
 import com.artagram.platform.party.dto.EstadoRondaResponse;
 import com.artagram.platform.party.dto.SalaFiestaResponse;
 import jakarta.validation.Valid;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -49,6 +52,31 @@ public class SalaFiestaController {
                                               @PathVariable UUID salaId) {
         salaFiestaService.iniciarRonda(principal.usuarioId(), salaId);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/api/fiestas/activas")
+    public List<SalaFiestaResponse> salasActivas(@AuthenticationPrincipal JwtService.TokenPrincipal principal) {
+        return salaFiestaService.listarSalasActivasDelUsuario(principal.usuarioId());
+    }
+
+    @DeleteMapping("/api/fiestas/{salaId}")
+    public ResponseEntity<Void> cerrarSala(@AuthenticationPrincipal JwtService.TokenPrincipal principal,
+                                            @PathVariable UUID salaId) {
+        salaFiestaService.cerrarSala(principal.usuarioId(), salaId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/api/fiestas/{salaId}/salir")
+    public ResponseEntity<Void> salirDeSala(@AuthenticationPrincipal JwtService.TokenPrincipal principal,
+                                             @PathVariable UUID salaId) {
+        salaFiestaService.salirDeSala(principal.usuarioId(), salaId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/api/fiestas/limpiar")
+    public ResponseEntity<Map<String, Object>> limpiarSalas(@AuthenticationPrincipal JwtService.TokenPrincipal principal) {
+        int cantidad = salaFiestaService.limpiarSalasInactivas(principal.usuarioId());
+        return ResponseEntity.ok(Map.of("cerradas", cantidad));
     }
 
     @GetMapping("/api/fiestas/{salaId}")

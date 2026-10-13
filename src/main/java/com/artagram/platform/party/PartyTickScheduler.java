@@ -46,7 +46,12 @@ public class PartyTickScheduler {
     private void procesarSala(UUID salaId, long ventanaMs) {
         long restante = roundClock.msRestantes(salaId);
         if (restante <= 0) {
-            cerrarRonda(salaId);
+            roundClock.terminarRonda(salaId);
+            try {
+                cerrarRonda(salaId);
+            } catch (Exception e) {
+                log.warn("Error cerrando ronda de sala {}: {}", salaId, e.getMessage());
+            }
             return;
         }
         salaFiestaService.notificarTick(salaId, restante);

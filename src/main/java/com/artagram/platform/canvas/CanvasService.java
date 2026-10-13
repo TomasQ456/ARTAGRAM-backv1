@@ -7,7 +7,9 @@ import com.artagram.platform.canvas.dto.TrazoEventoDto;
 import com.artagram.platform.common.error.ApiException;
 import com.artagram.platform.community.ComunidadService;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class CanvasService {
 
     private static final Logger log = LoggerFactory.getLogger(CanvasService.class);
+
+    private final Map<String, Long> cacheMiembros = new ConcurrentHashMap<>();
 
     private final LienzoRepository lienzoRepository;
     private final TrazoRepository trazoRepository;
@@ -74,8 +78,16 @@ public class CanvasService {
     }
 
     private void exigirMiembroActivo(UUID usuarioId, UUID comunidadId) {
+        String clave = usuarioId + ":" + comunidadId;
+        Long expira = cacheMiembros.get(clave);
+        long ahora = System.currentTimeMillis();
+        if (expira != null && ahora < expira) {
+            return;
+        }
         if (!comunidadService.esMiembroActivo(usuarioId, comunidadId)) {
+            cacheMiembros.remove(clave);
             throw ApiException.forbidden("NO_ERES_MIEMBRO", "No perteneces a esta comunidad");
         }
+        cacheMiembros.put(clave, ahora + 30_000L);
     }
 }
