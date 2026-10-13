@@ -8,6 +8,8 @@ public class EmailProperties {
     private String mode = "log";
     private String from;
     private String verificationLinkBase;
+    /** false = el registro deja la cuenta verificada de inmediato, sin enviar correo. */
+    private boolean verificacionRequerida = true;
 
     public String getMode() {
         return mode;
@@ -31,5 +33,13 @@ public class EmailProperties {
 
     public void setVerificationLinkBase(String verificationLinkBase) {
         this.verificationLinkBase = verificationLinkBase;
+    }
+
+    public boolean isVerificacionRequerida() {
+        return verificacionRequerida;
+    }
+
+    public void setVerificacionRequerida(boolean verificacionRequerida) {
+        this.verificacionRequerida = verificacionRequerida;
     }
 }

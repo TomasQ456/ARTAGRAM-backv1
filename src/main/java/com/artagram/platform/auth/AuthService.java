@@ -81,6 +81,13 @@ public class AuthService {
         eventPublisher.publishEvent(new UsuarioRegistradoEvent(usuario.getId()));
         eventoNegocioRecorder.registro(usuario.getId());
 
+        if (!emailProperties.isVerificacionRequerida()) {
+            usuario.marcarVerificado();
+            log.info("Usuario registrado y verificado de inmediato (verificacion por correo desactivada): id={}", usuario.getId());
+            return new RegistroResponse(usuario.getId(), usuario.getCorreo(), usuario.getNombreArtista(),
+                    "Tu cuenta está lista, ya puedes iniciar sesión", false);
+        }
+
         String token = generarTokenAleatorio();
         tokenRepository.save(new TokenVerificacion(usuario, token, Instant.now().plus(VERIFICACION_HORAS, ChronoUnit.HOURS)));
 
@@ -89,7 +96,7 @@ public class AuthService {
 
         log.info("Usuario registrado, pendiente de verificacion: id={}", usuario.getId());
         return new RegistroResponse(usuario.getId(), usuario.getCorreo(), usuario.getNombreArtista(),
-                "Revisa tu bandeja de entrada para confirmar tu cuenta");
+                "Revisa tu bandeja de entrada para confirmar tu cuenta", true);
     }
 
     @Transactional

@@ -46,6 +46,14 @@ services:
       STORAGE_ROOT: /app/data/uploads
       STORAGE_PROVIDER: disk
       EMAIL_MODE: ${EMAIL_MODE:-log}
+      # Sin SMTP configurado, el registro activa la cuenta al instante (no hay correo que enviar).
+      # El pipeline lo pasa a true automaticamente cuando existen los secretos SMTP_*.
+      VERIFICACION_CORREO: ${VERIFICACION_CORREO:-false}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GROQ_MODELO: ${GROQ_MODELO:-qwen/qwen3.8-27b}
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-}

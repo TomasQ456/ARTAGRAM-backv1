@@ -1,5 +1,7 @@
 package com.artagram.platform.auth;
 
+import static org.mockito.Mockito.never;
+import org.mockito.ArgumentCaptor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -26,6 +28,7 @@ class AuthServiceTest {
     private TokenVerificacionRepository tokenRepository;
     private EmailService emailService;
     private AuthService authService;
+    private EmailProperties emailProperties;
 
     @BeforeEach
     void setUp() {
@@ -35,7 +38,7 @@ class AuthServiceTest {
         JwtProperties jwtProperties = new JwtProperties();
         jwtProperties.setSecret("unit-test-secret-please-change-32bytes-minimum");
         jwtProperties.setAccessTokenMinutes(60);
-        EmailProperties emailProperties = new EmailProperties();
+        emailProperties = new EmailProperties();
         emailProperties.setVerificationLinkBase("http://localhost/verificar");
         emailProperties.setFrom("no-reply@test.local");
 
@@ -66,6 +69,21 @@ class AuthServiceTest {
         assertThat(respuesta.mensaje()).containsIgnoringCase("bandeja");
         verify(emailService).enviarVerificacion(eq("artista@correo.com"), eq("lienzo_azul"), any());
         verify(tokenRepository).save(any(TokenVerificacion.class));
+    }
+
+    @Test
+    void sinVerificacionPorCorreoLaCuentaQuedaActivaDeInmediatoYNoEnviaCorreo() {
+        emailProperties.setVerificacionRequerida(false);
+        RegistroRequest request = new RegistroRequest("artista@correo.com", "unaClaveLarga123", "lienzo_azul");
+        ArgumentCaptor<Usuario> guardado = ArgumentCaptor.forClass(Usuario.class);
+
+        var respuesta = authService.registrar(request);
+
+        assertThat(respuesta.verificacionPendiente()).isFalse();
+        verify(usuarioRepository).save(guardado.capture());
+        assertThat(guardado.getValue().isVerificado()).isTrue();
+        verify(emailService, never()).enviarVerificacion(any(), any(), any());
+        verify(tokenRepository, never()).save(any());
     }
 
     @Test

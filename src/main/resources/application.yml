@@ -37,6 +37,12 @@ spring:
     port: ${SMTP_PORT:587}
     username: ${SMTP_USER:}
     password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:true}
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
   servlet:
     multipart:
       max-file-size: 20MB
@@ -48,7 +54,11 @@ app:
     access-token-minutes: 120
   email:
     mode: ${EMAIL_MODE:log} # log | smtp
-    from: no-reply@artagram.local
+    # La mayoria de proveedores SMTP (Gmail incluido) rechazan un remitente distinto
+    # a la cuenta autenticada: por defecto se usa SMTP_USER.
+    from: ${EMAIL_FROM:${SMTP_USER:no-reply@artagram.local}}
+    # false = el registro activa la cuenta al instante sin enviar correo (util sin SMTP).
+    verificacion-requerida: ${VERIFICACION_CORREO:true}
     verification-link-base: ${APP_BASE_URL:http://localhost:5173}/verificar
   storage:
     # "disk" (default, para dev/Docker Compose) o "blob" (Azure Blob Storage,
