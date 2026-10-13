@@ -121,9 +121,9 @@ logging:
 
 artagram:
   ia:
-    habilitado: true
+    habilitado: ${IA_HABILITADO:true}
     groq-api-key: ${GROQ_API_KEY:}
-    groq-url: https://api.groq.com/openai/v1/chat/completions
-    modelo: qwen/qwen3.8-27b
+    groq-url: ${GROQ_URL:https://api.groq.com/openai/v1/chat/completions}
+    modelo: ${GROQ_MODELO:llama-3.2-11b-vision-preview}
     proveedor: ${IA_PROVEEDOR:groq}
 

@@ -51,8 +51,11 @@ public class GroqProveedorIa implements ProveedorIa {
 
     @Override
     public String completar(PromptIa prompt) {
-        if (properties.getGroqApiKey() == null || properties.getGroqApiKey().isBlank()) {
-            throw ApiException.badRequest("IA_NO_CONFIGURADA", "La clave API de Groq no está configurada");
+        boolean esLocal = properties.getGroqUrl() != null &&
+                (properties.getGroqUrl().contains("localhost") || properties.getGroqUrl().contains("127.0.0.1"));
+        if (!esLocal && (properties.getGroqApiKey() == null || properties.getGroqApiKey().isBlank())) {
+            throw ApiException.badRequest("IA_NO_CONFIGURADA",
+                    "La clave API de Groq no está configurada. Define la variable GROQ_API_KEY o configura IA_PROVEEDOR=fake.");
         }
 
         try {
@@ -81,14 +84,18 @@ public class GroqProveedorIa implements ProveedorIa {
             peticion.put("messages", messages);
             String bodyJson = objectMapper.writeValueAsString(peticion);
 
-            HttpRequest request = HttpRequest.newBuilder()
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                     .uri(URI.create(properties.getGroqUrl()))
-                    .header("Authorization", "Bearer " + properties.getGroqApiKey().trim())
                     .header("Content-Type", "application/json")
                     .header("User-Agent", "Artagram/1.0")
                     .timeout(Duration.ofSeconds(properties.getTimeoutSegundos()))
-                    .POST(HttpRequest.BodyPublishers.ofString(bodyJson))
-                    .build();
+                    .POST(HttpRequest.BodyPublishers.ofString(bodyJson));
+
+            if (properties.getGroqApiKey() != null && !properties.getGroqApiKey().isBlank()) {
+                requestBuilder.header("Authorization", "Bearer " + properties.getGroqApiKey().trim());
+            }
+
+            HttpRequest request = requestBuilder.build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
