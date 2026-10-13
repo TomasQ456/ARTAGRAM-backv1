@@ -63,15 +63,10 @@ public class QuotaService {
 
     @Transactional
     public void reservarCupoSalaFiesta(UUID usuarioId) {
-        Usuario usuario = usuarioRepository.getReferenceById(usuarioId);
         UsoCuenta uso = usoCuentaRepository.buscarParaActualizar(usuarioId)
                 .orElseGet(() -> usoCuentaRepository.save(new UsoCuenta(usuarioId)));
-        if (!usuario.isPremium() && uso.getSalasFiestaActivas() >= properties.getFreeMaxPartyRooms()) {
-            log.info("Tope de salas de fiesta alcanzado: usuario={} limite={}", usuarioId, properties.getFreeMaxPartyRooms());
-            throw new ApiException(HttpStatus.FORBIDDEN, "TOPE_SALAS_FIESTA",
-                    "Llegaste al limite de " + properties.getFreeMaxPartyRooms() + " salas de fiesta simultaneas del plan gratis");
-        }
         uso.incrementarSalasFiesta();
+        log.debug("Cupo sala de fiesta reservado (sin limite): usuario={}", usuarioId);
     }
 
     @Transactional

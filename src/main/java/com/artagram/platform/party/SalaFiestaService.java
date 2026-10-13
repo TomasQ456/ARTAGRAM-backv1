@@ -156,6 +156,7 @@ public class SalaFiestaService {
         }
         partyDrawService.consolidarTrazosEnBaseDeDatos(salaId);
         sala.setEstado(EstadoSala.CERRADA);
+        quotaService.liberarCupoSalaFiesta(sala.getAnfitrion().getId());
         roundClock.terminarRonda(salaId);
         broadcaster.enviar("/topic/fiesta/" + salaId, PartyEventoDto.juegoTerminado());
         log.info("Sala cerrada por anfitrión: id={}", salaId);
@@ -178,6 +179,7 @@ public class SalaFiestaService {
             partyDrawService.consolidarTrazosEnBaseDeDatos(s.getId());
             if (s.getAnfitrion().getId().equals(usuarioId)) {
                 s.setEstado(EstadoSala.CERRADA);
+                quotaService.liberarCupoSalaFiesta(s.getAnfitrion().getId());
                 roundClock.terminarRonda(s.getId());
                 broadcaster.enviar("/topic/fiesta/" + s.getId(), PartyEventoDto.juegoTerminado());
                 cerradas++;
