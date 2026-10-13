@@ -22,10 +22,10 @@ public class DashboardController {
 
     private static final Logger log = LoggerFactory.getLogger(DashboardController.class);
 
-    @Value("${app.observability.grafana-tecnico-url:http://localhost:3001/d/tecnico}")
+    @Value("${app.observability.grafana-tecnico-url:http://localhost:3001/d/artagram-tecnico}")
     private String panelTecnicoUrl;
 
-    @Value("${app.observability.grafana-negocio-url:http://localhost:3001/d/negocio}")
+    @Value("${app.observability.grafana-negocio-url:http://localhost:3001/d/artagram-negocio}")
     private String panelNegocioUrl;
 
     @Value("${app.observability.prometheus-url:http://localhost:9090}")

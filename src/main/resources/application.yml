@@ -88,8 +88,8 @@ app:
     free-max-party-rooms: 2
     free-history-days: 30
   observability:
-    grafana-tecnico-url: ${GRAFANA_URL:http://localhost:3001}/d/tecnico
-    grafana-negocio-url: ${GRAFANA_URL:http://localhost:3001}/d/negocio
+    grafana-tecnico-url: ${GRAFANA_URL:http://localhost:3001}/d/artagram-tecnico
+    grafana-negocio-url: ${GRAFANA_URL:http://localhost:3001}/d/artagram-negocio
     prometheus-url: ${PROMETHEUS_URL:http://localhost:9090}
 
 springdoc:
