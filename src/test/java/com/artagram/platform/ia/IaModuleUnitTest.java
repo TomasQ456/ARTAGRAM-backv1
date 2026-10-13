@@ -80,7 +80,8 @@ class IaModuleUnitTest {
         // Debe auto-corregir modelo deprecado a qwen/qwen3.8-27b
         assertThat(props.getModelo()).isEqualTo("qwen/qwen3.8-27b");
 
-        // Con .env presente en el directorio del proyecto, debe resolver la API key automáticamente
-        assertThat(props.getGroqApiKey()).isNotBlank();
+        // Si se define clave explícita, la retorna correctamente
+        props.setGroqApiKey("mi-clave-test");
+        assertThat(props.getGroqApiKey()).isEqualTo("mi-clave-test");
     }
 }

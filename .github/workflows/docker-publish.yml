@@ -151,6 +151,7 @@ jobs:
             if [ -n "${{ secrets.GROQ_API_KEY }}" ]; then
               touch .env
               grep -q "^GROQ_API_KEY=" .env && sed -i "s|^GROQ_API_KEY=.*|GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}|" .env || echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" >> .env
+              grep -q "^GROQ_MODELO=" .env && sed -i "s|^GROQ_MODELO=.*|GROQ_MODELO=qwen/qwen3.8-27b|" .env || echo "GROQ_MODELO=qwen/qwen3.8-27b" >> .env
             fi
             docker compose pull backend
             docker compose up -d

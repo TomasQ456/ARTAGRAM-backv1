@@ -47,6 +47,7 @@ services:
       STORAGE_PROVIDER: disk
       EMAIL_MODE: ${EMAIL_MODE:-log}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODELO: ${GROQ_MODELO:-qwen/qwen3.8-27b}
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-}
       JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m -XX:+UseSerialGC"
     volumes:
