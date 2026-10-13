@@ -56,7 +56,7 @@ class ComentarioServiceTest {
 
         when(publicacionRepository.findById(publicacionId)).thenReturn(Optional.of(publicacion));
         when(usuarioRepository.findById(autorId)).thenReturn(Optional.of(autor));
-        when(comentarioRepository.save(any(Comentario.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(comentarioRepository.saveAndFlush(any(Comentario.class))).thenAnswer(inv -> inv.getArgument(0));
 
         ComentarioDto dto = service.crearComentario(autorId, publicacionId, "Hermosa paleta de colores");
 

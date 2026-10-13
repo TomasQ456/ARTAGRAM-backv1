@@ -27,19 +27,19 @@ public interface PublicacionRepository extends JpaRepository<Publicacion, UUID> 
     // clearAutomatically: una UPDATE en bloque no pasa por el contexto de
     // persistencia, asi que sin esto un findById posterior en la MISMA
     // transaccion devolveria el valor viejo que ya tenia cacheado (HU-07).
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update Publicacion p set p.contadorLikes = p.contadorLikes + 1 where p.id = :id")
     int incrementarLikes(@Param("id") UUID id);
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update Publicacion p set p.contadorLikes = case when p.contadorLikes > 0 then p.contadorLikes - 1 else 0 end where p.id = :id")
     int decrementarLikes(@Param("id") UUID id);
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update Publicacion p set p.contadorComentarios = p.contadorComentarios + 1 where p.id = :id")
     int incrementarComentarios(@Param("id") UUID id);
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update Publicacion p set p.contadorComentarios = case when p.contadorComentarios > 0 then p.contadorComentarios - 1 else 0 end where p.id = :id")
     int decrementarComentarios(@Param("id") UUID id);
 }

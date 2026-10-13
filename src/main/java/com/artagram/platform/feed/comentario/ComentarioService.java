@@ -49,7 +49,7 @@ public class ComentarioService {
                 .orElseThrow(() -> ApiException.notFound("USUARIO_NO_ENCONTRADO", "Usuario no encontrado"));
 
         Comentario comentario = new Comentario(publicacion, autor, contenido.trim());
-        comentario = comentarioRepository.save(comentario);
+        comentario = comentarioRepository.saveAndFlush(comentario);
 
         publicacionRepository.incrementarComentarios(publicacionId);
         int totalComentarios = publicacionRepository.findById(publicacionId)
@@ -86,6 +86,7 @@ public class ComentarioService {
 
         UUID publicacionId = comentario.getPublicacion().getId();
         comentarioRepository.delete(comentario);
+        comentarioRepository.flush();
         publicacionRepository.decrementarComentarios(publicacionId);
 
         log.info("Comentario eliminado: id={} por usuario={}", comentarioId, usuarioId);

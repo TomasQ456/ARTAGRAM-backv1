@@ -90,7 +90,7 @@ class PublicacionNuevasFuncionalidadesIT extends IntegrationTestBase {
         EditarPublicacionRequest reqOtro = new EditarPublicacionRequest("Hackeado", "Desc", Set.of(), pub.version());
         ResponseEntity<String> respOtro = rest.exchange(
                 "/api/publicaciones/" + pub.id(),
-                HttpMethod.PATCH,
+                HttpMethod.PUT,
                 new HttpEntity<>(reqOtro, auth(tokenOtro)),
                 String.class
         );
@@ -100,7 +100,7 @@ class PublicacionNuevasFuncionalidadesIT extends IntegrationTestBase {
         EditarPublicacionRequest reqAutor = new EditarPublicacionRequest("Título Editado", "Nueva descripción", Set.of("acuarela"), pub.version());
         ResponseEntity<PublicacionDto> respAutor = rest.exchange(
                 "/api/publicaciones/" + pub.id(),
-                HttpMethod.PATCH,
+                HttpMethod.PUT,
                 new HttpEntity<>(reqAutor, auth(tokenAutor)),
                 PublicacionDto.class
         );
@@ -113,7 +113,7 @@ class PublicacionNuevasFuncionalidadesIT extends IntegrationTestBase {
         EditarPublicacionRequest reqVieja = new EditarPublicacionRequest("Título Conflito", "Desc", Set.of(), pub.version());
         ResponseEntity<String> respConflicto = rest.exchange(
                 "/api/publicaciones/" + pub.id(),
-                HttpMethod.PATCH,
+                HttpMethod.PUT,
                 new HttpEntity<>(reqVieja, auth(tokenAutor)),
                 String.class
         );
