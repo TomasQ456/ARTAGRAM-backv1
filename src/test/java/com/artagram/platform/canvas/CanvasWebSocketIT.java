@@ -95,6 +95,44 @@ class CanvasWebSocketIT extends IntegrationTestBase {
     }
 
     @Test
+    void unTrazoRecienDibujadoSePuedeEditarConElIdQueLlegaEnElEvento() throws Exception {
+        String token = testUsuarios.registrarVerificarYLoguear(rest, "escalador@correo.com", "claveSegura123", "escalador_a");
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        ComunidadResponse comunidad = rest.exchange("/api/comunidades", HttpMethod.POST,
+                new HttpEntity<>(new CrearComunidadRequest("Estudio Escalado", "desc", true), headers),
+                ComunidadResponse.class).getBody();
+
+        StompSession sesion = stompClients.conectar(puerto, token);
+        String destino = "/topic/lienzo/" + comunidad.id();
+        BlockingQueue<TrazoEventoDto> cola = stompClients.suscribir(sesion, destino, TrazoEventoDto.class);
+        Thread.sleep(300);
+
+        UUID trazoEnProgresoId = UUID.randomUUID();
+        sesion.send("/app/lienzo/" + comunidad.id() + "/final", new EnviarPuntosRequest(trazoEnProgresoId,
+                TipoPincel.LAPIZ, "#000000", 4.0, 1.0, 0, List.of(new Punto(0.2, 0.2), new Punto(0.4, 0.4))));
+        TrazoEventoDto finalizado = cola.poll(5, TimeUnit.SECONDS);
+        assertThat(finalizado).isNotNull();
+        // El id real (persistido) llega en el evento y es distinto del temporal del cliente
+        assertThat(finalizado.trazoId()).isNotNull().isNotEqualTo(trazoEnProgresoId);
+
+        // Sin recargar el snapshot: bloquear y escalar el trazo usando ese id
+        String base = "/api/comunidades/" + comunidad.id() + "/lienzo/trazos/" + finalizado.trazoId();
+        assertThat(rest.exchange(base + "/bloqueo", HttpMethod.POST, new HttpEntity<>(null, headers), String.class)
+                .getStatusCode().is2xxSuccessful()).isTrue();
+        var escalado = new com.artagram.platform.canvas.dto.EditarTrazoRequest(TipoPincel.LAPIZ, "#000000", 4.0, 1.0, 0,
+                List.of(new Punto(0.2, 0.2), new Punto(0.6, 0.6)));
+        assertThat(rest.exchange(base, HttpMethod.PUT, new HttpEntity<>(escalado, headers), Void.class)
+                .getStatusCode().is2xxSuccessful()).isTrue();
+
+        TrazoEventoDto editado = cola.poll(5, TimeUnit.SECONDS);
+        assertThat(editado).isNotNull();
+        assertThat(editado.tipo()).isEqualTo("EDITADO");
+        assertThat(editado.trazoId()).isEqualTo(finalizado.trazoId());
+        assertThat(editado.puntos()).containsExactly(new Punto(0.2, 0.2), new Punto(0.6, 0.6));
+    }
+
+    @Test
     void quienNoEsMiembroNoRecibeNiUnSoloTrazo() throws Exception {
         String tokenA = testUsuarios.registrarVerificarYLoguear(rest, "dibujanteC@correo.com", "claveSegura123", "dibujante_c");
         String tokenExtrano = testUsuarios.registrarVerificarYLoguear(rest, "extrano@correo.com", "claveSegura123", "extrano_uno");

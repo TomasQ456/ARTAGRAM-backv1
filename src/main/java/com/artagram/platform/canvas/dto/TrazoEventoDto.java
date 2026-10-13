@@ -21,15 +21,18 @@ public record TrazoEventoDto(
         double grosor,
         double opacidad,
         int capa,
-        List<Punto> puntos
+        List<Punto> puntos,
+        // Id persistido del trazo (FINAL/EDITADO). trazoEnProgresoId es solo el id temporal
+        // que genera el cliente al empezar a dibujar; para bloquear o editar se usa este.
+        UUID trazoId
 ) {
     public static TrazoEventoDto parcial(UUID trazoEnProgresoId, UUID autorId, String autorNombre, EnviarPuntosRequest r) {
         return new TrazoEventoDto("PARCIAL", trazoEnProgresoId, null, autorId, autorNombre,
-                r.tipoPincel(), r.colorHex(), r.grosor(), r.opacidad(), r.capa(), r.puntos());
+                r.tipoPincel(), r.colorHex(), r.grosor(), r.opacidad(), r.capa(), r.puntos(), null);
     }
 
-    public static TrazoEventoDto finalizado(UUID trazoEnProgresoId, long secuencia, UUID autorId, String autorNombre, EnviarPuntosRequest r) {
+    public static TrazoEventoDto finalizado(UUID trazoEnProgresoId, UUID trazoId, long secuencia, UUID autorId, String autorNombre, EnviarPuntosRequest r) {
         return new TrazoEventoDto("FINAL", trazoEnProgresoId, secuencia, autorId, autorNombre,
-                r.tipoPincel(), r.colorHex(), r.grosor(), r.opacidad(), r.capa(), r.puntos());
+                r.tipoPincel(), r.colorHex(), r.grosor(), r.opacidad(), r.capa(), r.puntos(), trazoId);
     }
 }

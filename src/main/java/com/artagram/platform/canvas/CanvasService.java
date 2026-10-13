@@ -63,7 +63,7 @@ public class CanvasService {
         metrics.incrementarTrazoFinalizado();
         log.debug("Trazo finalizado: comunidad={} secuencia={} autor={}", comunidadId, secuencia, autorId);
 
-        return TrazoEventoDto.finalizado(request.trazoEnProgresoId(), secuencia, autorId, autorNombre, request);
+        return TrazoEventoDto.finalizado(request.trazoEnProgresoId(), trazo.getId(), secuencia, autorId, autorNombre, request);
     }
 
     public void registrarLatencia(long millis) {

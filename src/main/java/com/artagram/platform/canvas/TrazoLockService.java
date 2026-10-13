@@ -48,7 +48,11 @@ public class TrazoLockService {
         String clave = clave(trazoId);
         String propietario = propietario(usuarioId, nombreUsuario);
         long inicio = System.nanoTime();
-        boolean adquirido = lockService.adquirir(clave, propietario, TTL);
+        // Reentrante para el mismo dueno (p. ej. recargo la pagina con el trazo tomado):
+        // se renueva en vez de rechazarlo hasta que venza el TTL.
+        boolean adquirido = lockService.adquirir(clave, propietario, TTL)
+                || (lockService.propietarioActual(clave).filter(propietario::equals).isPresent()
+                        && lockService.renovar(clave, propietario, TTL));
         metrics.registrarEsperaBloqueo((System.nanoTime() - inicio) / 1_000_000);
 
         if (adquirido) {
@@ -98,7 +102,8 @@ public class TrazoLockService {
     private com.artagram.platform.canvas.dto.TrazoEventoDto aEventoEditado(Trazo trazo) {
         return new com.artagram.platform.canvas.dto.TrazoEventoDto("EDITADO", null, trazo.getSecuencia(),
                 trazo.getAutor().getId(), trazo.getAutor().getNombreArtista(), trazo.getTipoPincel(),
-                trazo.getColorHex(), trazo.getGrosor(), trazo.getOpacidad(), trazo.getCapa(), trazo.getPuntos());
+                trazo.getColorHex(), trazo.getGrosor(), trazo.getOpacidad(), trazo.getCapa(), trazo.getPuntos(),
+                trazo.getId());
     }
 
     private void exigirMiembro(UUID usuarioId, UUID comunidadId) {

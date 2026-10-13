@@ -125,6 +125,17 @@ class TrazoLockIT extends IntegrationTestBase {
                 HttpMethod.POST, new HttpEntity<>(headersA), BloqueoTrazoResponse.class);
         assertThat(tomaA.getStatusCode()).isEqualTo(HttpStatus.OK);
 
+        // Reentrante para el mismo dueno (recargo la pagina con el trazo tomado); B sigue fuera
+        ResponseEntity<BloqueoTrazoResponse> retomaA = rest.exchange(
+                "/api/comunidades/" + comunidad.id() + "/lienzo/trazos/" + trazoId + "/bloqueo",
+                HttpMethod.POST, new HttpEntity<>(headersA), BloqueoTrazoResponse.class);
+        assertThat(retomaA.getStatusCode()).isEqualTo(HttpStatus.OK);
+        ResponseEntity<BloqueoTrazoResponse> intentoB = rest.exchange(
+                "/api/comunidades/" + comunidad.id() + "/lienzo/trazos/" + trazoId + "/bloqueo",
+                HttpMethod.POST, new HttpEntity<>(headersB), BloqueoTrazoResponse.class);
+        assertThat(intentoB.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(intentoB.getBody().propietarioNombre()).isEqualTo("editor_a");
+
         EditarTrazoRequest edicion = new EditarTrazoRequest(TipoPincel.MARCADOR, "#ABCDEF", 10.0, 0.8, 1,
                 List.of(new Punto(0.5, 0.5)));
 
